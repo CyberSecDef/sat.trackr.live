@@ -48,14 +48,23 @@ final class SatCatClient
             throw $e;
         }
 
-        $body = (string) $response->getBody();
-        if (trim($body) === '' || str_starts_with(strtolower(ltrim($body)), 'no satcat data found')) {
-            throw new RuntimeException("CelesTrak SATCAT returned no data for group '{$group}'.");
+        $body = trim((string) $response->getBody());
+
+        // CelesTrak returns plain-text messages for retired / empty groups
+        // instead of valid JSON, e.g.:
+        //   GROUP "noaa" does not exist
+        //   No SATCAT data found
+        // Treat these as an empty group rather than an error — the same
+        // groups are also empty in the GP feed (chunk 3 logged 0 records
+        // for noaa/iridium/swarm/other). Returning [] lets the ingester
+        // count it as processed-but-empty.
+        if ($body === '' || ($body[0] !== '[' && $body[0] !== '{')) {
+            return [];
         }
 
         $decoded = json_decode($body, true);
         if (!is_array($decoded)) {
-            throw new RuntimeException("CelesTrak SATCAT returned non-array JSON for group '{$group}'.");
+            return [];
         }
         /** @var list<array<string, mixed>> $decoded */
         return $decoded;
