@@ -10,21 +10,35 @@ Part of the **trackr.live family** alongside [trackr.live](https://trackr.live) 
 
 ## Status
 
-🎉 **Phase 1 MVP complete.** Chunks 1–7 are live; only the WebGL/text-only fallback (chunks 1.5 + 8, per req_spec §24) remains before Phase 1 closes. The README is updated as each chunk lands.
+🚧 **Phase 2 in progress.** Phase 1 (all 9 chunks) is complete — full SPA with globe + detail panel + time scrubbing + text-only fallback at `/text`. Phase 2 (data depth) chunk 1 is now live: SATCAT enrichment populates 98.5% of the catalog with operator/country/launch_date/RCS/status. Chunks 2-7 remaining.
+
+### Phase 1 — Foundation MVP (✅ complete)
 
 | Chunk | Status | What it adds |
 |---|---|---|
 | 1. Bootstrap + chrome | ✅ done | Repo skeleton, build tooling, Slim front controller, SPA shell, dark/light/high-contrast themes, Cesium globe with OSM imagery, search input + ⌘K, theme switcher |
-| 1.5. WebGL fallback gate | ⏳ pending | Client-side WebGL detection; `<sat-no-webgl>` notice when absent, with link to text-only catalog |
-| 2. Schema + migrations | ✅ done | `bin/console` (Symfony Console) with `migrate / rollback / migrate:status / make:migration / health`; `satellites`, `satellites_fts` (with sync triggers), `tle_current`, `tle_history`, `satellite_purposes` tables — verified by 7-test PHPUnit feature suite |
-| 3. CelesTrak ingester | ✅ done | `make ingest` (or `--group=slug`) populates ~15.6K distinct satellites from CelesTrak's 38 GP groups in ~40s; idempotent re-runs honor CelesTrak's 403 "not modified" politeness signal. TleParser does mod-10 checksum + epoch + element extraction; CelesTrakIngester does upsert-preserving-SATCAT-fields + INSERT OR IGNORE history. 12 new tests, 19 total passing. |
-| 4. API endpoints | ✅ done | 8 JSON endpoints under `/api/v1/`: `/satellites`, `/satellites/{norad}`, `/satellites/{norad}/tle`, `/groups`, `/groups/{slug}`, `/groups/{slug}/tles`, `/search`, `/autocomplete`. App-level CORS (handles OPTIONS preflight before routing); per-group ETag (304 round-trip) + JSON Content-Type + Cache-Control middleware. New `group_membership` migration tracks per-group inclusion. 16 new feature tests, **36 total passing**. |
-| 5. Globe rendering | ✅ done | The globe is no longer empty: ~15K satellites rendered as `Cesium.PointPrimitiveCollection`, color-coded by `object_type`. SGP4 propagation runs in a `Web Worker` at 4Hz (every 250ms), positions transferred as `Float32Array` (no copy). Click-to-select wired via `Cesium.Scene.pick`; `<sat-globe>` dispatches `'select'` CustomEvents that `<sat-app>` displays as a placeholder pill (real detail panel arrives in chunk 6). Live status pill shows "Tracking 15,665 satellites" then fades. 9 new Vitest cases for the API client; **45 total tests passing**. |
-| 6. Detail panel + search | ✅ done | Right-rail `<sat-detail-panel>` slides in on selection with four §10 sections: Identity (badges + 6 grid fields), Current state (live lat/lon/alt polled from worker), Orbital elements (epoch + `<sat-freshness-badge>` + 12 fields), Raw data (clickable TLE + JSON links). Functional `<sat-search>` with debounced autocomplete dropdown — ↑/↓ navigates, Enter/click selects, camera flies to the satellite. Highlighted primitive turns white + 9px on selection; clicking empty space, the × button, or Esc clears. Mobile: bottom-sheet panel. **52 total tests passing** (6 new Vitest cases for FreshnessBadge classification). |
-| 7. Time scrubbing | ✅ done | Bottom `<sat-timeline>` with a slider spanning now-7d → now+7d, yellow shaded bands beyond ±48h ("extrapolated" warning per §11). Play/pause + speed buttons (0.5×/1×/10×/60×/600×) + Now reset + UTC time + relative offset display. `Clock` facade wraps `Cesium.Clock` and drives PointPrimitiveLayer via `onTick` (replaces the chunk-5 setInterval); a "big jump" detector (>5s clock delta) triggers immediate worker propagation when the user scrubs. Live state in the detail panel updates from scrubbed time automatically. 10 new Vitest cases for Clock; **62 total tests passing**. |
-| 8. Text-only catalog at /text | ⏳ pending | Server-rendered fallback for browsers without WebGL or with JS disabled (depends on chunk 4 API) |
+| 1.5. WebGL fallback gate | ✅ done | `hasWebGL()` probes for `webgl2` / `webgl` / `experimental-webgl` (try/catch for restricted contexts); `<sat-app>` renders `<sat-no-webgl>` notice with CTA → `/text` when absent |
+| 2. Schema + migrations | ✅ done | `bin/console` (Symfony Console) with `migrate / rollback / migrate:status / make:migration / health`; `satellites`, `satellites_fts` (with sync triggers), `tle_current`, `tle_history`, `satellite_purposes` tables |
+| 3. CelesTrak GP ingester | ✅ done | `make ingest` populates ~15.6K distinct satellites from CelesTrak's 38 GP groups in ~40s; idempotent re-runs honor CelesTrak's 403 "not modified" signal |
+| 4. JSON API | ✅ done | 8 endpoints under `/api/v1/`: satellites/groups/search/autocomplete; CORS + ETag + JSON middleware; `group_membership` table powers `/groups/{slug}/tles` |
+| 5. Globe rendering | ✅ done | ~15K satellites as `Cesium.PointPrimitiveCollection`, color-coded by type; SGP4 in a Web Worker @ 4Hz; click-to-select via `Cesium.Scene.pick` |
+| 6. Detail panel + search | ✅ done | Right-rail panel with Identity / Current state / Orbital elements / Raw data; functional `<sat-search>` with autocomplete + camera fly-to |
+| 7. Time scrubbing | ✅ done | `<sat-timeline>` with ±7d slider + yellow bands beyond ±48h, play/pause, 5 speed buttons, Now reset; `Clock` facade drives both worker + UI |
+| 8. Text-only catalog `/text` | ✅ done | 4 PHP routes (catalog list / satellite detail / groups / search) — server-rendered HTML, no JS required, sitemap-friendly. Self-contained inline CSS. SPA top-bar links to it. |
 
-See [`docs/phase1.md`](docs/phase1.md) for the full phase design and [`req_spec.md`](req_spec.md) for the long-form vision (sections §1–§30).
+### Phase 2 — Data depth (🚧 in progress)
+
+| Chunk | Status | What it adds |
+|---|---|---|
+| 1. SATCAT ingester + Phase-2 schema | ✅ done | `make ingest-satcat` enriches ~28.8K records (98.5% of catalog) with operator/country/launch_date/launch_site_code/RCS/status/decayed_at in 30s; rebuilds `satellite_purposes` from `group_membership` (12,757 rows). 5 new migrations land the chunks-3-6 tables (`launch_sites`, `launches`, `reentries`, `pass_cache` + a column on `satellites`). 31 new PHPUnit cases, **108 total tests passing**. |
+| 2. Detail panel reads enriched fields | ⏳ pending | Polish pass — surface SATCAT data in the SPA detail panel (operator/country no longer "—"); same for `/text/satellite/{norad}` |
+| 3. Launch Library 2 ingester + launches view | ⏳ pending | `make ingest-ll2`, `/api/v1/launches/*`, `/launches` SPA + `/text/launches` |
+| 4. Space-Track ingester + reentries view | ⏳ pending | `make ingest-spacetrack`, `/api/v1/reentries/*`, `/decays` SPA + `/text/decays` |
+| 5. Observer location handling | ⏳ pending | Geolocation + Nominatim city search + manual lat/lon + localStorage; top-bar `📍` pill |
+| 6. Pass predictions (calc + UI) | ⏳ pending | Hybrid client-side (browser worker) + server-side (Node subprocess) SGP4; `/api/v1/satellites/{norad}/passes`; "Visibility from observer" panel section |
+| 7. CelesTrak FORMAT=JSON migration + Phase 2 polish | ⏳ pending | Switch GP ingest from FORMAT=TLE to FORMAT=JSON before mid-2026 6-digit NORAD ID transition; cron-entries doc; README closes Phase 2 |
+
+See [`docs/phase1.md`](docs/phase1.md) and [`docs/phase2.md`](docs/phase2.md) for design details, and [`req_spec.md`](req_spec.md) for the long-form vision (sections §1–§30).
 
 ---
 
@@ -77,7 +91,7 @@ Open `http://localhost:8000` (or the LAN URL printed by `make`). You should see:
 - **Top bar**: `⊕ sat.trackr.live` wordmark, `Space situational awareness, _legible_` tagline, `§ catalog · § launches · § events` nav (launches/events are dim placeholders), search input with `⌘K` shortcut hint, theme switcher button.
 - **Cesium globe with ~15,000 satellites** rendered as point primitives, color-coded by `object_type` (cyan = payloads + unknown, amber = rocket bodies, red = debris, gray = TBA). SGP4 propagation runs in a Web Worker at 4Hz; you should see the ISS marching across the planet, Starlink trains in formation, and ~10K LEO objects in slow-motion swarm. Drag to rotate, pinch/scroll to zoom. OpenStreetMap imagery (no Cesium ion token needed yet).
 - **Click any dot** → it turns white + 9px and the right-rail **detail panel** slides in with four `§` sections:
-  - **§ Identity** — type/status/orbit-class badges + 6-cell grid (operator, country, launch date, launch vehicle, mass, RCS). Phase-1 fields not yet populated by SATCAT show as italic "—" placeholders. External links: N2YO, Heavens-Above, Gunter, Wikipedia.
+  - **§ Identity** — type/status/orbit-class badges + 6-cell grid (operator, country, launch date, launch vehicle, mass, RCS). After Phase 2 chunk 1 (SATCAT), object_type/status/country/launch_date/launch_site_code/RCS now populated for ~98.5% of objects (operator + mass + dimensions remain empty until later sources). External links: N2YO, Heavens-Above, Gunter, Wikipedia.
   - **§ Current state** — live latitude / longitude / altitude (km) updated 2× per second from the propagator worker.
   - **§ Orbital elements** — epoch with `<sat-freshness-badge>` (FRESH/STALE/AGED/OLD), period, inclination, eccentricity, mean motion, perigee, apogee, semi-major axis, B*, RAAN, arg perigee, mean anomaly, rev number.
   - **§ Raw data** — clickable 3-line TLE (click to copy) + JSON detail/TLE links.
@@ -95,18 +109,20 @@ URL shapes already wired:
 
 ```bash
 # Schema management
-make migrate                         # apply the 5 Phase 1 migrations to data/sat.db
-make migrate-status                  # show what's applied vs pending
-make rollback                        # reverse the most recent batch
-make make-migration NAME=add_foo     # scaffold a new migration file
+make migrate                          # apply migrations (11 total: 6 Phase 1 + 5 Phase 2 chunk 1)
+make migrate-status                   # show what's applied vs pending
+make rollback                         # reverse the most recent batch
+make make-migration NAME=add_foo      # scaffold a new migration file
 
-# Catalog ingest (chunk 3)
-make ingest                          # all 38 CelesTrak groups, ~40s on a fresh DB
-make ingest-group GROUP=stations     # just one group
-make health                          # PHP / pdo_sqlite / DB / per-table row counts
+# Catalog ingest
+make ingest                           # CelesTrak GP — TLE data for ~15.6K satellites in ~40s (chunk 3)
+make ingest-group GROUP=stations      # just one GP group
+make ingest-satcat                    # CelesTrak SATCAT — operator/country/launch_date/RCS/status enrichment in ~30s (Phase 2 chunk 1)
+make ingest-satcat-group GROUP=starlink  # just one SATCAT group
+make health                           # PHP / pdo_sqlite / DB / per-table row counts
 
 # Quality gates
-make test                            # 19 PHP tests (TleParser, MigrationsTest, CelesTrakIngesterTest) + 1 JS smoke
+make test                             # 77 PHP tests + 31 JS = 108 cases passing
 make lint / make analyze / make typecheck / make ci
 ```
 
@@ -116,12 +132,16 @@ The schema after `make migrate` matches `docs/phase1.md` § V exactly:
 
 | Table | Purpose | Notes |
 |---|---|---|
-| `satellites` | Catalog row per object | CHECK constraints on `object_type`, `status`, `orbit_class`, `size_class`; 6 indexes. CelesTrak ingest only populates `name` + `intl_designator`; SATCAT (chunk 3+, Phase 2) will fill operator/country/mass/etc. |
+| `satellites` | Catalog row per object | CHECK constraints on `object_type`, `status`, `orbit_class`, `size_class`; 6 indexes. CelesTrak GP populates `name` + `intl_designator`; CelesTrak SATCAT (Phase 2 chunk 1) fills `object_type`/`status`/`country`/`launch_date`/`launch_site_code`/`decayed_at`/`rcs_meters`. Operator/mass/dimensions still empty pending later sources. |
 | `satellites_fts` | FTS5 virtual table for fuzzy search | Auto-synced via insert/update/delete triggers |
 | `tle_current` | One TLE per active object | FK to satellites, ON DELETE CASCADE; mean motion + eccentricity + inclination + RAAN + arg perigee + mean anomaly + BSTAR + rev number, plus derived period / perigee / apogee / semi-major axis |
 | `tle_history` | Append-only TLE archive | Composite PK `(norad_id, epoch)`; INSERT OR IGNORE makes re-ingests cheap |
-| `satellite_purposes` | Join table for §5 SET-style purpose | Empty in Phase 1; populated by SATCAT in Phase 2 |
+| `satellite_purposes` | Join table for §5 SET-style purpose | Populated by SATCAT ingester via `group_membership` heuristic (Phase 2 chunk 1); 12,757 rows after first run |
 | `group_membership` | Join table tracking which CelesTrak group(s) include each satellite | Composite PK `(norad_id, group_slug)` + `last_seen_at`; populated by the ingester on each pass; powers `/api/v1/groups/{slug}*` |
+| `launch_sites` | LL2 launch pads | Created by Phase 2 chunk 1 migration; populated by Phase 2 chunk 3 LL2 ingester |
+| `launches` | LL2 launch records | Created by Phase 2 chunk 1 migration; populated by Phase 2 chunk 3 LL2 ingester |
+| `reentries` | Predicted decays from Space-Track TIP + CelesTrak SATCAT | Created by Phase 2 chunk 1 migration; populated by Phase 2 chunk 4 Space-Track ingester |
+| `pass_cache` | Server-side pass-prediction cache (6h TTL) | Created by Phase 2 chunk 1 migration; populated by Phase 2 chunk 6 PassCalculator |
 | `migrations` | Auto-created by Migrator | Tracks applied filename + batch + timestamp |
 
 ### API endpoint reference (chunk 4)
