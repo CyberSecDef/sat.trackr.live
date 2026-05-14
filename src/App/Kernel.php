@@ -14,7 +14,10 @@ use SatTrackr\Http\Controllers\SatelliteTleController;
 use SatTrackr\Http\Controllers\SearchController;
 use SatTrackr\Http\Controllers\SpaShellController;
 use SatTrackr\Http\Controllers\Text\TextCatalogController;
+use SatTrackr\Http\Controllers\Text\TextGroupController;
+use SatTrackr\Http\Controllers\Text\TextGroupsController;
 use SatTrackr\Http\Controllers\Text\TextSatelliteController;
+use SatTrackr\Http\Controllers\Text\TextSearchController;
 use SatTrackr\Http\Middleware\CorsMiddleware;
 use SatTrackr\Http\Middleware\ErrorHandlerMiddleware;
 use SatTrackr\Http\Middleware\ETagMiddleware;
@@ -56,6 +59,9 @@ final class Kernel
         $app->get('/text', TextCatalogController::class);
         $app->get('/text/', TextCatalogController::class);
         $app->get('/text/satellite/{norad:[0-9]+}', TextSatelliteController::class);
+        $app->get('/text/groups', TextGroupsController::class);
+        $app->get('/text/groups/{slug:[a-zA-Z0-9_\-]+}', TextGroupController::class);
+        $app->get('/text/search', TextSearchController::class);
 
         // API routes — Slim binds the group closure to its CallableResolver,
         // which requires a non-static closure (it can't bind $this to a static).

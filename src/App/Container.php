@@ -38,7 +38,10 @@ use SatTrackr\Ingest\CelesTrakClient;
 use SatTrackr\Ingest\CelesTrakIngester;
 use SatTrackr\Ingest\TleParser;
 use SatTrackr\Http\Controllers\Text\TextCatalogController;
+use SatTrackr\Http\Controllers\Text\TextGroupController;
+use SatTrackr\Http\Controllers\Text\TextGroupsController;
 use SatTrackr\Http\Controllers\Text\TextSatelliteController;
+use SatTrackr\Http\Controllers\Text\TextSearchController;
 use SatTrackr\Services\HttpClientFactory;
 use SatTrackr\Services\TextRenderer;
 use SatTrackr\Services\ViteAssetResolver;
@@ -111,6 +114,18 @@ final class Container
                 $c->get(TextRenderer::class),
             ),
             TextSatelliteController::class => static fn (DIContainer $c) => new TextSatelliteController(
+                $c->get(Connection::class),
+                $c->get(TextRenderer::class),
+            ),
+            TextGroupsController::class => static fn (DIContainer $c) => new TextGroupsController(
+                $c->get(Connection::class),
+                $c->get(TextRenderer::class),
+            ),
+            TextGroupController::class => static fn (DIContainer $c) => new TextGroupController(
+                $c->get(Connection::class),
+                $c->get(TextRenderer::class),
+            ),
+            TextSearchController::class => static fn (DIContainer $c) => new TextSearchController(
                 $c->get(Connection::class),
                 $c->get(TextRenderer::class),
             ),

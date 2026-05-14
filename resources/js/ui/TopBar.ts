@@ -58,9 +58,12 @@ export class SatTopBar extends LitElement {
     }
     nav .item {
       cursor: pointer;
+      color: inherit;
+      text-decoration: none;
     }
     nav .item:hover {
       color: var(--color-accent);
+      text-decoration: none;
     }
     nav .item--placeholder {
       opacity: 0.4;
@@ -95,7 +98,7 @@ export class SatTopBar extends LitElement {
         <span class="brand__tagline">Space situational awareness, <em>legible</em></span>
       </div>
       <nav aria-label="Primary">
-        <span class="item">§ catalog</span>
+        <a class="item" href="/text">§ catalog</a>
         <span class="divider" aria-hidden="true">·</span>
         <span class="item item--placeholder" title="coming in Phase 2">§ launches</span>
         <span class="divider" aria-hidden="true">·</span>
