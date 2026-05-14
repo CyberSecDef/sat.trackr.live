@@ -25,6 +25,7 @@
 - [ ] ⌘K opens search; typing "ISS" or "25544" finds and selects the ISS.
 - [ ] Bottom timeline shows the full now-7d to now+7d range; play/pause works; objects move accordingly. Region beyond ±48h is rendered with a yellow warning band ("no historical TLE in Phase 1") but the slider can still travel there.
 - [ ] Theme switcher cycles ≥3 themes (Dark / Light / High Contrast) with state persisted in localStorage.
+- [ ] **WebGL fallback (per req_spec §24):** when WebGL is unavailable (older browsers, restricted environments, GPU disabled, headless contexts), the page does not silently white-screen. Instead it renders a graceful fallback path: a clear explanation that the 3D globe needs WebGL, plus a link to a text-only catalog browser at `/text` that lists/searches/inspects satellites via plain server-rendered HTML. Works with JavaScript fully disabled.
 - [ ] All PHP files pass `make lint-php` (PHP-CS-Fixer) and `make analyze` (PHPStan level 6).
 - [ ] All TS files pass `make lint-js` and `make typecheck` with no errors.
 - [ ] PHPUnit + Vitest both run green via `make test`.
@@ -693,6 +694,39 @@ All UI components are `LitElement` subclasses, registered as custom elements wit
 
 **`Clock.ts`** — wraps `Cesium.Clock`. Bounds: `now-7d` to `now+7d` (forward-compatible with §11's full historical/forecast range). Default rate: 1x. Emits `tick(time)` on each clock cycle. Note: positions outside ±48h are extrapolated from the current TLE only — Phase 2 will replace this with historical-TLE re-propagation. The Timeline's yellow band makes this user-visible.
 
+### WebGL detection + text-only fallback
+
+Per req_spec §24 ("WebGL unavailable → static fallback page with text-only catalog browser"), Phase 1 must degrade gracefully for browsers without WebGL or with JavaScript fully disabled. Two layers:
+
+**Layer 1 — Client-side WebGL gate** (lands in chunk 1.5; one-line check before Cesium init):
+
+```ts
+function hasWebGL(): boolean {
+  try {
+    const canvas = document.createElement('canvas');
+    return !!(canvas.getContext('webgl2') || canvas.getContext('webgl'));
+  } catch { return false; }
+}
+```
+
+If `hasWebGL()` returns false, `<sat-app>` renders a `<sat-no-webgl>` notice instead of `<sat-globe>`. The notice explains the requirement, lists known-good browsers, and links prominently to `/text` (the text-only catalog browser). Persists across theme changes.
+
+**Layer 2 — Server-rendered text-only catalog browser at `/text`** (lands in chunk 8, after the API exists):
+
+- `/text` — paginated table of satellites (name, NORAD ID monospace, country, type, status), filter form (country / type / status), search box. Pure server-rendered HTML, no JS required. Uses the same `/api/v1/satellites` data source via direct controller calls (not HTTP).
+- `/text/satellite/{norad}` — full detail page mirroring §10's Identity + Orbital elements + Current TLE sections. Live state (lat/lon/alt) is computed server-side at request time.
+- `/text/search?q=...` — server-rendered search results.
+- `/text/groups/{slug}` — group member list.
+
+Pages render in the same dark/light/high-contrast themes (CSS variables apply equally). The top bar shows a `🌐 globe view` link that returns to `/` (with a polite warning if WebGL is still unavailable). Sitemap-friendly, crawlable, fast.
+
+**`<sat-no-webgl>`** (`ui/NoWebGL.ts`) — Lit element rendered in place of the globe when WebGL is absent. Layout matches the loading state (centered ⊕ glyph, sans-serif heading, monospace details), with a primary CTA `Open the text catalog →` pointing at `/text`.
+
+This dual-layer approach means:
+- Modern desktop/mobile with WebGL: full 3D globe (the showcase).
+- Older browsers / restricted IT environments / accessibility tools that disable WebGL: graceful explanation + immediate text-browser link.
+- JavaScript fully disabled (or curl-friendly): `/text` works because every page is server-rendered.
+
 ### API client
 
 **`api/client.ts`** — typed fetch wrappers. `getSatellite(norad: number): Promise<SatelliteDetail>`, `getGroupTles(slug: string): Promise<GroupTleBundle>`, etc. Throws typed errors on non-2xx.
@@ -891,6 +925,25 @@ The substance of each decision is folded into the relevant section above; this l
 - **SQLite write contention during ingest.** WAL mode + a single ingest writer should be fine, but if a user lands during an ingest run we want reads to be fast. WAL is the right call for this; mentioned above.
 - **TLE precision in `text` columns.** Storing line1/line2 as text preserves all original precision. Storing parsed mean elements as REAL (double) is fine — TLE precision is ~7 decimal digits, double has 15.
 - **AGPL compliance in deps.** Need to verify all chosen deps are AGPL-compatible. Slim, illuminate/database, illuminate/console, Guzzle, Monolog, vlucas/phpdotenv: all MIT/BSD — fine. Cesium.js: Apache-2.0 — fine. satellite.js: MIT — fine. No conflicts spotted.
+- **WebGL availability** is not universal: corporate IT often disables it, older browsers and headless tools lack it, some mobile browsers downgrade it under low memory. Mitigation is the two-layer fallback in §VII (WebGL detection → either Cesium globe or a text-only catalog browser at `/text`). The text browser doubles as a no-JS-required path, useful for crawlers and accessibility tools.
+
+---
+
+## § XII.5 — Updated chunk sequence
+
+Phase 1 originally had 7 chunks; adding WebGL fallback inserts two:
+
+1. Bootstrap + chrome (✅ done as of commit `9382c19`)
+2. **NEW** — Chunk 1.5: WebGL detection + `<sat-no-webgl>` notice (small client-side patch)
+3. Schema + migrations
+4. CelesTrak ingester
+5. API endpoints
+6. Globe rendering
+7. Detail panel + search
+8. Time scrubbing
+9. **NEW** — Chunk 8: Text-only catalog browser at `/text` (server-rendered fallback; depends on chunk 4's API + controllers)
+
+Chunk 1.5 should land before chunk 5 (globe rendering) at the latest, so the WebGL gate is wired before the globe gets data. Chunk 8 needs at least chunk 4 (API endpoints) but can land any time after.
 
 ---
 
