@@ -80,6 +80,7 @@ $mkUrl = static fn (int $p): string => $baseUrl . '?' . ($baseQs === '' ? '' : "
         <th>Name</th>
         <th>Intl ID</th>
         <th>Type</th>
+        <th>Status</th>
         <th>Country</th>
         <th>Orbit</th>
         <th>Launch</th>
@@ -92,6 +93,7 @@ $mkUrl = static fn (int $p): string => $baseUrl . '?' . ($baseQs === '' ? '' : "
         <td><?= htmlspecialchars((string) $s['name'], ENT_QUOTES) ?></td>
         <td class="intl"><?= htmlspecialchars((string) ($s['intl_designator'] ?? '—'), ENT_QUOTES) ?></td>
         <td><span class="badge badge--type"><?= htmlspecialchars((string) $s['object_type'], ENT_QUOTES) ?></span></td>
+        <td><span class="badge"><?= htmlspecialchars((string) $s['status'], ENT_QUOTES) ?></span></td>
         <td><?= htmlspecialchars((string) ($s['country'] ?? '—'), ENT_QUOTES) ?></td>
         <td><span class="badge badge--orbit"><?= htmlspecialchars((string) $s['orbit_class'], ENT_QUOTES) ?></span></td>
         <td class="mono small"><?= htmlspecialchars((string) ($s['launch_date'] ?? '—'), ENT_QUOTES) ?></td>

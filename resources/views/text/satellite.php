@@ -21,11 +21,18 @@ $noradHtml = (int) $sat['norad_id'];
   <span class="badge badge--orbit"><?= htmlspecialchars((string) $sat['orbit_class'], ENT_QUOTES) ?></span>
 </p>
 
+<?php if (!empty($sat['decayed_at'])): ?>
+  <p style="color: var(--warning); font-family: var(--font-mono); margin: 0.5rem 0;">
+    ⚠ Reentered Earth's atmosphere on <?= htmlspecialchars((string) $sat['decayed_at'], ENT_QUOTES) ?>
+  </p>
+<?php endif; ?>
+
 <h2>§ Identity</h2>
 <dl class="fields">
   <div><dt>Operator</dt><dd<?= empty($sat['operator']) ? ' class="muted"' : '' ?>><?= !empty($sat['operator']) ? htmlspecialchars((string) $sat['operator'], ENT_QUOTES) : '—' ?></dd></div>
   <div><dt>Country</dt><dd<?= empty($sat['country']) ? ' class="muted"' : '' ?>><?= !empty($sat['country']) ? htmlspecialchars((string) $sat['country'], ENT_QUOTES) : '—' ?></dd></div>
   <div><dt>Launch date</dt><dd<?= empty($sat['launch_date']) ? ' class="muted"' : '' ?>><?= !empty($sat['launch_date']) ? htmlspecialchars((string) $sat['launch_date'], ENT_QUOTES) : '—' ?></dd></div>
+  <div><dt>Launch site</dt><dd<?= empty($sat['launch_site_code']) ? ' class="muted"' : '' ?>><?= !empty($sat['launch_site_code']) ? htmlspecialchars((string) $sat['launch_site_code'], ENT_QUOTES) : '—' ?></dd></div>
   <div><dt>Launch vehicle</dt><dd<?= empty($sat['launch_vehicle']) ? ' class="muted"' : '' ?>><?= !empty($sat['launch_vehicle']) ? htmlspecialchars((string) $sat['launch_vehicle'], ENT_QUOTES) : '—' ?></dd></div>
   <div><dt>Mass (kg)</dt><dd<?= empty($sat['mass_kg']) ? ' class="muted"' : '' ?>><?= !empty($sat['mass_kg']) ? number_format((int) $sat['mass_kg']) : '—' ?></dd></div>
   <div><dt>RCS (m²)</dt><dd<?= empty($sat['rcs_meters']) ? ' class="muted"' : '' ?>><?= !empty($sat['rcs_meters']) ? number_format((float) $sat['rcs_meters'], 2) : '—' ?></dd></div>
