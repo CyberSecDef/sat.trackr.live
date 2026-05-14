@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace SatTrackr\Cli\Commands;
 
+use SatTrackr\Database\Connection;
 use SatTrackr\Ingest\CelesTrakIngester;
 use Symfony\Component\Console\Attribute\AsCommand;
 use Symfony\Component\Console\Command\Command;
@@ -18,8 +19,15 @@ final class IngestCelesTrakCommand extends Command
 {
     public function __construct(
         private readonly CelesTrakIngester $ingester,
+        private readonly Connection $db,
     ) {
         parent::__construct();
+    }
+
+    private function countRows(string $table): int
+    {
+        $stmt = $this->db->pdo()->query("SELECT COUNT(*) FROM {$table}");
+        return $stmt === false ? 0 : (int) $stmt->fetchColumn();
     }
 
     protected function configure(): void
@@ -64,15 +72,22 @@ final class IngestCelesTrakCommand extends Command
         $io->table(
             ['Metric', 'Count'],
             [
-                ['Groups processed',     (string) $report->groupsProcessed],
-                ['Satellites upserted',  (string) $report->satellitesUpserted],
-                ['TLE current upserted', (string) $report->tleCurrentUpserted],
-                ['TLE history added',    (string) $report->tleHistoryAdded],
-                ['TLE rejected',         (string) $report->tleRejected],
-                ['Errors',               (string) count($report->errors)],
-                ['Duration (s)',         (string) round($report->durationSeconds(), 2)],
+                ['Groups processed',          (string) $report->groupsProcessed],
+                ['Groups skipped (no update)', (string) $report->groupsSkippedNotModified],
+                ['TLE upsert ops',            (string) $report->satellitesUpserted],
+                ['TLE history rows added',    (string) $report->tleHistoryAdded],
+                ['TLE records rejected',      (string) $report->tleRejected],
+                ['Errors',                    (string) count($report->errors)],
+                ['Duration (s)',              (string) round($report->durationSeconds(), 2)],
             ]
         );
+
+        // Show actual table sizes too — distinct from the upsert ops metric above.
+        $io->newLine();
+        $io->writeln('<info>Database after ingest:</info>');
+        $io->writeln(sprintf('  satellites:   %s rows', number_format($this->countRows('satellites'))));
+        $io->writeln(sprintf('  tle_current:  %s rows', number_format($this->countRows('tle_current'))));
+        $io->writeln(sprintf('  tle_history:  %s rows', number_format($this->countRows('tle_history'))));
 
         if (count($report->errors) > 0) {
             $io->warning(sprintf('%d group(s) failed:', count($report->errors)));

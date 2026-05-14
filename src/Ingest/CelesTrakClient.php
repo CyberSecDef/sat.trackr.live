@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace SatTrackr\Ingest;
 
 use GuzzleHttp\ClientInterface;
+use GuzzleHttp\Exception\BadResponseException;
 use RuntimeException;
 
 /**
@@ -26,9 +27,23 @@ final class CelesTrakClient
 
     public function fetchGroup(string $group): string
     {
-        $response = $this->http->request('GET', self::URL, [
-            'query' => ['GROUP' => $group, 'FORMAT' => 'TLE'],
-        ]);
+        try {
+            $response = $this->http->request('GET', self::URL, [
+                'query' => ['GROUP' => $group, 'FORMAT' => 'TLE'],
+            ]);
+        } catch (BadResponseException $e) {
+            $response = $e->getResponse();
+            // CelesTrak signals "no update since last fetch" with a 403 +
+            // body starting with "GP data has not updated". Map that to
+            // NotModifiedException so the ingester can treat it as success.
+            if ($response->getStatusCode() === 403) {
+                $body = (string) $response->getBody();
+                if (stripos($body, 'has not updated') !== false) {
+                    throw new NotModifiedException("Group '{$group}' not updated since last fetch");
+                }
+            }
+            throw $e;
+        }
 
         $body = (string) $response->getBody();
         if ($body === '' || str_starts_with(strtolower(ltrim($body)), 'no gp data found')) {

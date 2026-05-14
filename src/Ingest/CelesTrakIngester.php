@@ -43,6 +43,16 @@ final class CelesTrakIngester
 
             try {
                 $body = $this->client->fetchGroup($group);
+            } catch (NotModifiedException $e) {
+                // CelesTrak says nothing changed — count as processed-but-skipped
+                // and move on. Not an error.
+                $report->groupsSkippedNotModified++;
+                $duration = microtime(true) - $groupStart;
+                if ($onGroup !== null) {
+                    $onGroup($group, 0, $duration);
+                }
+                $this->logger->info("Skipped group {$group} (not modified)");
+                continue;
             } catch (Throwable $e) {
                 $report->recordError($group, $e->getMessage());
                 $this->logger->warning("Failed to fetch group {$group}: {$e->getMessage()}");

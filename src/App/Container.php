@@ -113,7 +113,10 @@ final class Container
             RollbackCommand::class        => static fn (DIContainer $c) => new RollbackCommand($c->get(Migrator::class)),
             MigrateStatusCommand::class   => static fn (DIContainer $c) => new MigrateStatusCommand($c->get(Migrator::class)),
             MakeMigrationCommand::class   => static fn () => new MakeMigrationCommand($rootDir . '/migrations'),
-            IngestCelesTrakCommand::class => static fn (DIContainer $c) => new IngestCelesTrakCommand($c->get(CelesTrakIngester::class)),
+            IngestCelesTrakCommand::class => static fn (DIContainer $c) => new IngestCelesTrakCommand(
+                $c->get(CelesTrakIngester::class),
+                $c->get(Connection::class),
+            ),
             HealthCommand::class          => static fn (DIContainer $c) => new HealthCommand(
                 $c->get(Connection::class),
                 $c->get(Migrator::class),
