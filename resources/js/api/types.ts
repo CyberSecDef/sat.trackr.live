@@ -59,6 +59,7 @@ export interface TleCurrent {
 
 export interface SatelliteDetail extends SatelliteSummary {
   alt_names: string[];
+  launch_site_code: string | null;
   launch_vehicle: string | null;
   mission: string | null;
   rcs_meters: number | null;

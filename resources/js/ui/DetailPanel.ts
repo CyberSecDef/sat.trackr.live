@@ -383,11 +383,24 @@ export class SatDetailPanel extends LitElement {
         <div class="grid">
           ${this.field('Operator', d.operator)}
           ${this.field('Country', d.country)}
-          ${this.field('Launch date', d.launch_date)}
+          ${this.field('Launched',
+            d.launch_date !== null && d.launch_site_code !== null
+              ? `${d.launch_date} · ${d.launch_site_code}`
+              : (d.launch_date ?? d.launch_site_code))}
           ${this.field('Launch vehicle', d.launch_vehicle)}
           ${this.field('Mass (kg)', d.mass_kg !== null ? d.mass_kg.toLocaleString() : null)}
           ${this.field('RCS (m²)', d.rcs_meters !== null ? d.rcs_meters.toFixed(2) : null)}
         </div>
+        ${d.purposes.length > 0
+          ? html`<p class="small" style="margin: 0.4rem 0 0; color: var(--color-text-muted);">
+              Purposes: ${d.purposes.join(', ')}
+            </p>`
+          : null}
+        ${d.decayed_at !== null
+          ? html`<p class="small" style="margin: 0.4rem 0 0; color: var(--color-warning);">
+              ⚠ Reentered: ${d.decayed_at}
+            </p>`
+          : null}
         ${this.renderLinks(d)}
       </section>
     `;

@@ -61,6 +61,7 @@ final class SatelliteDetailController
             'operator'        => $sat->operator,
             'country'         => $sat->country,
             'launch_date'     => $sat->launch_date,
+            'launch_site_code'=> $sat->launch_site_code,
             'launch_vehicle'  => $sat->launch_vehicle,
             'mission'         => $sat->mission,
             'orbit_class'     => $sat->orbit_class,
