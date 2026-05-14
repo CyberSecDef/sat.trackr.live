@@ -13,6 +13,7 @@ use SatTrackr\Http\Controllers\SatelliteListController;
 use SatTrackr\Http\Controllers\SatelliteTleController;
 use SatTrackr\Http\Controllers\SearchController;
 use SatTrackr\Http\Controllers\SpaShellController;
+use SatTrackr\Http\Controllers\Text\TextCatalogController;
 use SatTrackr\Http\Middleware\CorsMiddleware;
 use SatTrackr\Http\Middleware\ErrorHandlerMiddleware;
 use SatTrackr\Http\Middleware\ETagMiddleware;
@@ -48,6 +49,11 @@ final class Kernel
         // SPA routes — render the shell, client-side router takes over.
         $app->get('/', SpaShellController::class);
         $app->get('/satellite/{norad:[0-9]+}', SpaShellController::class);
+
+        // Text-only catalog (chunk 8) — server-rendered HTML, no JSON middleware.
+        // Per req_spec §24, this is the WebGL/no-JS fallback path.
+        $app->get('/text', TextCatalogController::class);
+        $app->get('/text/', TextCatalogController::class);
 
         // API routes — Slim binds the group closure to its CallableResolver,
         // which requires a non-static closure (it can't bind $this to a static).

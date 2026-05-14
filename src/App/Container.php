@@ -37,7 +37,9 @@ use SatTrackr\Services\FreshnessClassifier;
 use SatTrackr\Ingest\CelesTrakClient;
 use SatTrackr\Ingest\CelesTrakIngester;
 use SatTrackr\Ingest\TleParser;
+use SatTrackr\Http\Controllers\Text\TextCatalogController;
 use SatTrackr\Services\HttpClientFactory;
+use SatTrackr\Services\TextRenderer;
 use SatTrackr\Services\ViteAssetResolver;
 
 final class Container
@@ -100,6 +102,13 @@ final class Container
             JsonResponseMiddleware::class => static fn () => new JsonResponseMiddleware(),
 
             FreshnessClassifier::class => static fn () => new FreshnessClassifier(),
+            TextRenderer::class        => static fn () => new TextRenderer($rootDir),
+
+            // Text-only catalog controllers (chunk 8)
+            TextCatalogController::class => static fn (DIContainer $c) => new TextCatalogController(
+                $c->get(Connection::class),
+                $c->get(TextRenderer::class),
+            ),
 
             // API controllers
             SatelliteListController::class   => static fn (DIContainer $c) => new SatelliteListController($c->get(Connection::class)),
