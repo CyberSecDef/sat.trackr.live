@@ -17,7 +17,12 @@ html,
 body {
   margin: 0;
   padding: 0;
+  /* 100vh is wrong on mobile Chrome — it counts the browser's
+     retracting bottom toolbar as page area, so fixed bottom UI
+     gets clipped. 100dvh tracks the actual visible viewport.
+     100vh kept as a fallback for ancient browsers. */
   height: 100vh;
+  height: 100dvh;
   width: 100vw;
   overflow: hidden;
   font-family: var(--font-body);
@@ -43,6 +48,7 @@ sat-app {
   display: block;
   position: relative;
   height: 100vh;
+  height: 100dvh;
   width: 100vw;
 }
 

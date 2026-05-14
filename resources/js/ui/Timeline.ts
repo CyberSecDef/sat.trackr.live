@@ -50,7 +50,15 @@ export class SatTimeline extends LitElement {
       background: var(--color-bg-overlay);
       border-top: 1px solid var(--color-border);
       backdrop-filter: blur(8px);
-      padding: 0.5rem 1rem 0.6rem;
+      /* Reserve room for the iOS home indicator / Android nav gestures /
+         Chrome's bottom toolbar so the slider isn't clipped. The
+         max() keeps a sensible minimum padding when no safe area
+         is reported (desktop browsers). */
+      padding:
+        0.5rem
+        max(1rem, env(safe-area-inset-right))
+        max(0.6rem, env(safe-area-inset-bottom))
+        max(1rem, env(safe-area-inset-left));
       color: var(--color-text);
       font-family: var(--font-body);
       font-size: 0.8rem;
