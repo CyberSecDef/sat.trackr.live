@@ -2,9 +2,11 @@
 import '../css/main.css';
 
 // Custom element registrations (side-effect imports)
+import './ui/FreshnessBadge';
 import './ui/ThemeSwitcher';
 import './ui/Search';
 import './ui/TopBar';
+import './ui/DetailPanel';
 import './globe/Globe';
 import './App';
 

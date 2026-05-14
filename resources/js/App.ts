@@ -1,5 +1,9 @@
 import { LitElement, html, css } from 'lit';
 import { customElement, property, state } from 'lit/decorators.js';
+import { ref, createRef, type Ref } from 'lit/directives/ref.js';
+import type * as Cesium from 'cesium';
+import type { SatGlobe } from './globe/Globe';
+import './ui/DetailPanel';
 
 @customElement('sat-app')
 export class SatApp extends LitElement {
@@ -9,8 +13,10 @@ export class SatApp extends LitElement {
   @property({ type: String, attribute: 'selected-norad' })
   selectedNorad: string | null = null;
 
-  /** NORAD of the currently-selected satellite, or null. Set on click. */
+  /** NORAD of the currently-selected satellite, or null. */
   @state() private selected: number | null = null;
+
+  private globeRef: Ref<SatGlobe> = createRef();
 
   static styles = css`
     :host {
@@ -29,20 +35,6 @@ export class SatApp extends LitElement {
       position: relative;
       overflow: hidden;
     }
-    /* Chunk-5 placeholder — replaced by the real <sat-detail-panel> in chunk 6. */
-    .selected-pill {
-      position: absolute;
-      top: 4rem;
-      right: 1rem;
-      padding: 0.4rem 0.8rem;
-      background: var(--color-bg-overlay);
-      border: 1px solid var(--color-accent);
-      border-radius: 4px;
-      color: var(--color-accent);
-      font-family: var(--font-mono);
-      font-size: 0.85rem;
-      z-index: 5;
-    }
   `;
 
   connectedCallback(): void {
@@ -51,15 +43,43 @@ export class SatApp extends LitElement {
       this.selected = parseInt(this.selectedNorad, 10);
     }
     this.addEventListener('select', this.handleSelect as EventListener);
+    this.addEventListener('search-select', this.handleSearchSelect as EventListener);
+    this.addEventListener('panel-close', this.handlePanelClose as EventListener);
   }
 
   disconnectedCallback(): void {
     super.disconnectedCallback();
     this.removeEventListener('select', this.handleSelect as EventListener);
+    this.removeEventListener('search-select', this.handleSearchSelect as EventListener);
+    this.removeEventListener('panel-close', this.handlePanelClose as EventListener);
   }
 
+  /** Click-on-globe → just set selection (no camera fly). */
   private handleSelect = (e: CustomEvent<{ norad: number | null }>): void => {
-    this.selected = e.detail.norad;
+    this.applySelection(e.detail.norad, /* fly */ false);
+  };
+
+  /** Search picker → set selection AND fly the camera to it. */
+  private handleSearchSelect = (e: CustomEvent<{ norad: number; name: string }>): void => {
+    this.applySelection(e.detail.norad, /* fly */ true);
+  };
+
+  private handlePanelClose = (): void => {
+    this.applySelection(null, false);
+  };
+
+  private applySelection(norad: number | null, fly: boolean): void {
+    this.selected = norad;
+    const globe = this.globeRef.value?.globe;
+    globe?.layer?.setHighlight(norad);
+    if (fly && norad !== null) {
+      globe?.flyToSatellite(norad);
+    }
+  }
+
+  /** For <sat-detail-panel> — looks up live ECEF from the layer. */
+  private getCurrentPosition = (norad: number): Cesium.Cartesian3 | null => {
+    return this.globeRef.value?.globe.layer?.getPosition(norad) ?? null;
   };
 
   render() {
@@ -67,10 +87,14 @@ export class SatApp extends LitElement {
       <div class="layout">
         <sat-top-bar></sat-top-bar>
         <div class="globe-area">
-          <sat-globe cesium-ion-token=${this.cesiumIonToken}></sat-globe>
-          ${this.selected !== null
-            ? html`<div class="selected-pill">§ NORAD ${this.selected}</div>`
-            : null}
+          <sat-globe
+            cesium-ion-token=${this.cesiumIonToken}
+            ${ref(this.globeRef)}
+          ></sat-globe>
+          <sat-detail-panel
+            .norad=${this.selected}
+            .getCurrentPosition=${this.getCurrentPosition}
+          ></sat-detail-panel>
         </div>
       </div>
     `;
