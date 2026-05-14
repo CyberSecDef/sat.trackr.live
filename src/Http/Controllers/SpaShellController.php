@@ -40,6 +40,14 @@ final class SpaShellController
         $html = (string) ob_get_clean();
 
         $response->getBody()->write($html);
-        return $response->withHeader('Content-Type', 'text/html; charset=utf-8');
+        return $response
+            ->withHeader('Content-Type', 'text/html; charset=utf-8')
+            // Force the browser to revalidate the SPA shell on every load.
+            // The bundled assets it references are already content-hashed, so
+            // they cache aggressively — but the shell itself must always be
+            // fresh so a new build's hashed URLs propagate immediately.
+            ->withHeader('Cache-Control', 'no-cache, no-store, must-revalidate, max-age=0')
+            ->withHeader('Pragma', 'no-cache')
+            ->withHeader('Expires', '0');
     }
 }
