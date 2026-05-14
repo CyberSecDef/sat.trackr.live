@@ -38,6 +38,7 @@ use SatTrackr\Ingest\CelesTrakClient;
 use SatTrackr\Ingest\CelesTrakIngester;
 use SatTrackr\Ingest\TleParser;
 use SatTrackr\Http\Controllers\Text\TextCatalogController;
+use SatTrackr\Http\Controllers\Text\TextSatelliteController;
 use SatTrackr\Services\HttpClientFactory;
 use SatTrackr\Services\TextRenderer;
 use SatTrackr\Services\ViteAssetResolver;
@@ -106,6 +107,10 @@ final class Container
 
             // Text-only catalog controllers (chunk 8)
             TextCatalogController::class => static fn (DIContainer $c) => new TextCatalogController(
+                $c->get(Connection::class),
+                $c->get(TextRenderer::class),
+            ),
+            TextSatelliteController::class => static fn (DIContainer $c) => new TextSatelliteController(
                 $c->get(Connection::class),
                 $c->get(TextRenderer::class),
             ),
