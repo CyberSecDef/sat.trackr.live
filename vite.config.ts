@@ -3,14 +3,21 @@ import cesium from 'vite-plugin-cesium';
 import { resolve } from 'node:path';
 
 export default defineConfig({
-  // Base URL for built assets — Apache serves them from /build/
-  base: '/build/',
+  // We leave base at the default '/' and have ViteAssetResolver (PHP side)
+  // prepend the '/build/' URL prefix when emitting <script>/<link> tags.
+  // Setting Vite base to '/build/' interacts badly with vite-plugin-cesium's
+  // static copy, producing doubled /build/build/cesium/ paths.
 
-  // We don't use Vite's publicDir feature; PHP's public/ is the web root,
-  // not Vite's static asset folder.
+  // PHP's public/ is the web root, not Vite's static asset folder.
   publicDir: false,
 
   plugins: [
+    // vite-plugin-cesium externalizes the `cesium` import as a global
+    // (window.Cesium) and copies static assets to outDir/cesium/. We use
+    // its defaults — files end up at public/build/cesium/. Because we render
+    // our shell in PHP rather than letting Vite transform an index.html,
+    // shell.php manually injects the Cesium.js script tag and sets
+    // window.CESIUM_BASE_URL to /build/cesium/.
     cesium(),
   ],
 

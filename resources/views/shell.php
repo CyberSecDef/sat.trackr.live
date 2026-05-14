@@ -49,6 +49,12 @@ $selectedAttr = $selectedNorad !== null
     })();
   </script>
 
+  <!-- Cesium runtime — must load before our app bundle since vite-plugin-cesium
+       externalizes the `cesium` import and expects window.Cesium to exist. -->
+  <script>window.CESIUM_BASE_URL = '/build/cesium/';</script>
+  <link rel="stylesheet" href="/build/cesium/Widgets/widgets.css">
+  <script src="/build/cesium/Cesium.js"></script>
+
   <!-- Vite-resolved assets (dev: HMR client + entry; prod: hashed CSS + JS) -->
   <?= $vite->tagsForEntry('resources/js/main.ts') ?>
 </head>
