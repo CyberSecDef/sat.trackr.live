@@ -8,6 +8,7 @@ import './ui/Search';
 import './ui/TopBar';
 import './ui/DetailPanel';
 import './ui/Timeline';
+import './ui/NoWebGL';
 import './globe/Globe';
 import './App';
 

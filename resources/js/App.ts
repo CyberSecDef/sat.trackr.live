@@ -4,8 +4,10 @@ import { ref, createRef, type Ref } from 'lit/directives/ref.js';
 import type * as Cesium from 'cesium';
 import type { SatGlobe } from './globe/Globe';
 import type { Clock } from './time/Clock';
+import { hasWebGL } from './util/webgl';
 import './ui/DetailPanel';
 import './ui/Timeline';
+import './ui/NoWebGL';
 
 @customElement('sat-app')
 export class SatApp extends LitElement {
@@ -20,6 +22,9 @@ export class SatApp extends LitElement {
 
   /** Clock published by <sat-globe> once it's initialized. */
   @state() private clock: Clock | null = null;
+
+  /** Set in connectedCallback. Drives the WebGL fallback branch in render(). */
+  @state() private webglSupported = true;
 
   private globeRef: Ref<SatGlobe> = createRef();
 
@@ -44,6 +49,7 @@ export class SatApp extends LitElement {
 
   connectedCallback(): void {
     super.connectedCallback();
+    this.webglSupported = hasWebGL();
     if (this.selectedNorad !== null && /^\d+$/.test(this.selectedNorad)) {
       this.selected = parseInt(this.selectedNorad, 10);
     }
@@ -94,6 +100,16 @@ export class SatApp extends LitElement {
   };
 
   render() {
+    if (!this.webglSupported) {
+      // Per req_spec §24: WebGL unavailable → graceful fallback notice
+      // pointing at the server-rendered text-only catalog at /text.
+      return html`
+        <div class="layout">
+          <sat-top-bar></sat-top-bar>
+          <sat-no-webgl></sat-no-webgl>
+        </div>
+      `;
+    }
     return html`
       <div class="layout">
         <sat-top-bar></sat-top-bar>
