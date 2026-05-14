@@ -10,7 +10,7 @@ Part of the **trackr.live family** alongside [trackr.live](https://trackr.live) 
 
 ## Status
 
-🚧 **Phase 1 in progress.** Built incrementally; the README is updated as each chunk lands.
+🎉 **Phase 1 MVP complete.** Chunks 1–7 are live; only the WebGL/text-only fallback (chunks 1.5 + 8, per req_spec §24) remains before Phase 1 closes. The README is updated as each chunk lands.
 
 | Chunk | Status | What it adds |
 |---|---|---|
@@ -21,7 +21,7 @@ Part of the **trackr.live family** alongside [trackr.live](https://trackr.live) 
 | 4. API endpoints | ✅ done | 8 JSON endpoints under `/api/v1/`: `/satellites`, `/satellites/{norad}`, `/satellites/{norad}/tle`, `/groups`, `/groups/{slug}`, `/groups/{slug}/tles`, `/search`, `/autocomplete`. App-level CORS (handles OPTIONS preflight before routing); per-group ETag (304 round-trip) + JSON Content-Type + Cache-Control middleware. New `group_membership` migration tracks per-group inclusion. 16 new feature tests, **36 total passing**. |
 | 5. Globe rendering | ✅ done | The globe is no longer empty: ~15K satellites rendered as `Cesium.PointPrimitiveCollection`, color-coded by `object_type`. SGP4 propagation runs in a `Web Worker` at 4Hz (every 250ms), positions transferred as `Float32Array` (no copy). Click-to-select wired via `Cesium.Scene.pick`; `<sat-globe>` dispatches `'select'` CustomEvents that `<sat-app>` displays as a placeholder pill (real detail panel arrives in chunk 6). Live status pill shows "Tracking 15,665 satellites" then fades. 9 new Vitest cases for the API client; **45 total tests passing**. |
 | 6. Detail panel + search | ✅ done | Right-rail `<sat-detail-panel>` slides in on selection with four §10 sections: Identity (badges + 6 grid fields), Current state (live lat/lon/alt polled from worker), Orbital elements (epoch + `<sat-freshness-badge>` + 12 fields), Raw data (clickable TLE + JSON links). Functional `<sat-search>` with debounced autocomplete dropdown — ↑/↓ navigates, Enter/click selects, camera flies to the satellite. Highlighted primitive turns white + 9px on selection; clicking empty space, the × button, or Esc clears. Mobile: bottom-sheet panel. **52 total tests passing** (6 new Vitest cases for FreshnessBadge classification). |
-| 7. Time scrubbing | ⏳ pending | ±7d timeline with yellow band beyond ±48h, play/pause, speed controls |
+| 7. Time scrubbing | ✅ done | Bottom `<sat-timeline>` with a slider spanning now-7d → now+7d, yellow shaded bands beyond ±48h ("extrapolated" warning per §11). Play/pause + speed buttons (0.5×/1×/10×/60×/600×) + Now reset + UTC time + relative offset display. `Clock` facade wraps `Cesium.Clock` and drives PointPrimitiveLayer via `onTick` (replaces the chunk-5 setInterval); a "big jump" detector (>5s clock delta) triggers immediate worker propagation when the user scrubs. Live state in the detail panel updates from scrubbed time automatically. 10 new Vitest cases for Clock; **62 total tests passing**. |
 | 8. Text-only catalog at /text | ⏳ pending | Server-rendered fallback for browsers without WebGL or with JS disabled (depends on chunk 4 API) |
 
 See [`docs/phase1.md`](docs/phase1.md) for the full phase design and [`req_spec.md`](req_spec.md) for the long-form vision (sections §1–§30).
@@ -69,6 +69,7 @@ Open `http://localhost:8000` (or the LAN URL printed by `make`). You should see:
 - **Search the catalog** in the top-right input (⌘K focuses it). Type to get a debounced autocomplete dropdown of up to 10 matches; ↑/↓ navigates, Enter or click selects. On selection the camera flies to the satellite and the detail panel opens.
 - **Close the panel** via the × button, the Esc key, or by clicking empty space on the globe.
 - **Status pill** in the bottom-left corner shows the load progression: "Loading satellite catalog…" → "Parsing 15,665 TLEs…" → "Tracking 15,665 satellites" (then fades to half-opacity).
+- **Bottom timeline** spans now-7d → now+7d. The yellow shaded bands beyond ±48h mark the "extrapolated" zone (Phase 1 doesn't have historical TLE backfill yet). Drag the slider to scrub time — the swarm jumps immediately to the new positions. Play/pause + speed buttons (0.5×–600×) animate forward (or back) at the chosen multiplier; the live state in the detail panel reflects the scrubbed time. "Now" button snaps back to wall-clock present.
 - **Theme switcher**: click the toggle (top right) to cycle Dark / Light / High contrast. Choice persists in `localStorage`.
 
 URL shapes already wired:
