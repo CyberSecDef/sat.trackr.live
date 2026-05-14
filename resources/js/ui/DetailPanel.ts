@@ -223,7 +223,11 @@ export class SatDetailPanel extends LitElement {
         bottom: 0;
         left: 0;
         width: 100%;
-        max-height: 70vh;
+        /* Cap at 70% of the .globe-area's actual height (NOT 70vh — on
+           small viewports 70vh exceeded .globe-area, pushing the panel's
+           sticky header above .globe-area's overflow:hidden boundary
+           and clipping the × button behind the top bar). */
+        max-height: 70%;
         border-left: none;
         border-top: 1px solid var(--color-border);
         transform: translateY(100%);
