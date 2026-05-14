@@ -4,10 +4,17 @@ declare(strict_types=1);
 
 namespace SatTrackr\App;
 
+use SatTrackr\Http\Controllers\SatelliteDetailController;
+use SatTrackr\Http\Controllers\SatelliteListController;
+use SatTrackr\Http\Controllers\SatelliteTleController;
 use SatTrackr\Http\Controllers\SpaShellController;
+use SatTrackr\Http\Middleware\CorsMiddleware;
 use SatTrackr\Http\Middleware\ErrorHandlerMiddleware;
+use SatTrackr\Http\Middleware\ETagMiddleware;
+use SatTrackr\Http\Middleware\JsonResponseMiddleware;
 use Slim\App;
 use Slim\Factory\AppFactory;
+use Slim\Routing\RouteCollectorProxy;
 
 final class Kernel
 {
@@ -21,6 +28,10 @@ final class Kernel
         $app = AppFactory::create();
         $app->addRoutingMiddleware();
         $app->add($container->get(ErrorHandlerMiddleware::class));
+        // CORS at app level (outside RoutingMiddleware) so OPTIONS preflight
+        // doesn't get intercepted by Slim's "method not allowed" check before
+        // we have a chance to respond.
+        $app->add($container->get(CorsMiddleware::class));
 
         self::registerRoutes($app);
 
@@ -33,6 +44,16 @@ final class Kernel
         $app->get('/', SpaShellController::class);
         $app->get('/satellite/{norad:[0-9]+}', SpaShellController::class);
 
-        // /api/v1/* routes land in chunk 4 (API endpoints).
+        // API routes — Slim binds the group closure to its CallableResolver,
+        // which requires a non-static closure (it can't bind $this to a static).
+        $app->group('/api/v1', function (RouteCollectorProxy $api): void {
+            $api->get('/satellites', SatelliteListController::class);
+            $api->get('/satellites/{norad:[0-9]+}', SatelliteDetailController::class);
+            $api->get('/satellites/{norad:[0-9]+}/tle', SatelliteTleController::class);
+            // Group + search routes register in chunk 4D.
+        })
+            ->add(JsonResponseMiddleware::class)
+            ->add(ETagMiddleware::class);
+        // CORS lives at the app level (above) — see comment in createApp().
     }
 }

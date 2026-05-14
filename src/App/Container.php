@@ -20,11 +20,15 @@ use SatTrackr\Cli\Commands\MigrateStatusCommand;
 use SatTrackr\Cli\Commands\RollbackCommand;
 use SatTrackr\Database\Connection;
 use SatTrackr\Database\Migrator;
+use SatTrackr\Http\Controllers\SatelliteDetailController;
+use SatTrackr\Http\Controllers\SatelliteListController;
+use SatTrackr\Http\Controllers\SatelliteTleController;
 use SatTrackr\Http\Controllers\SpaShellController;
 use SatTrackr\Http\Middleware\CorsMiddleware;
 use SatTrackr\Http\Middleware\ErrorHandlerMiddleware;
 use SatTrackr\Http\Middleware\ETagMiddleware;
 use SatTrackr\Http\Middleware\JsonResponseMiddleware;
+use SatTrackr\Services\FreshnessClassifier;
 use SatTrackr\Ingest\CelesTrakClient;
 use SatTrackr\Ingest\CelesTrakIngester;
 use SatTrackr\Ingest\TleParser;
@@ -89,6 +93,19 @@ final class Container
             CorsMiddleware::class         => static fn () => new CorsMiddleware(),
             ETagMiddleware::class         => static fn () => new ETagMiddleware(),
             JsonResponseMiddleware::class => static fn () => new JsonResponseMiddleware(),
+
+            FreshnessClassifier::class => static fn () => new FreshnessClassifier(),
+
+            // API controllers
+            SatelliteListController::class   => static fn (DIContainer $c) => new SatelliteListController($c->get(Connection::class)),
+            SatelliteDetailController::class => static fn (DIContainer $c) => new SatelliteDetailController(
+                $c->get(Connection::class),
+                $c->get(FreshnessClassifier::class),
+            ),
+            SatelliteTleController::class    => static fn (DIContainer $c) => new SatelliteTleController(
+                $c->get(Connection::class),
+                $c->get(FreshnessClassifier::class),
+            ),
 
             Connection::class => static function () use ($rootDir): Connection {
                 $dbPath = EnvLoader::get('DB_PATH', 'data/sat.db') ?? 'data/sat.db';
