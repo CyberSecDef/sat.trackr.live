@@ -20,6 +20,9 @@ const PIXEL_SIZES: Record<ObjectType, number> = {
   UNKNOWN: 3,
 };
 
+const HIGHLIGHT_COLOR = Cesium.Color.WHITE;
+const HIGHLIGHT_PIXEL_SIZE = 9;
+
 /**
  * Owns a Cesium PointPrimitiveCollection and a propagator Web Worker.
  * Pulls bulk TLEs from the API, hands them to the worker, then
@@ -31,6 +34,11 @@ export class PointPrimitiveLayer {
   private worker: Worker;
   /** norad_id → primitive index */
   private indexByNorad = new Map<number, number>();
+  /** norad_id → object_type (used to restore color when un-highlighting) */
+  private typeByNorad = new Map<number, string>();
+  /** norad_id → most recent ECEF position (meters) */
+  private positionByNorad = new Map<number, Cesium.Cartesian3>();
+  private highlighted: number | null = null;
   private propagateTimer: number | null = null;
   private destroyed = false;
 
@@ -56,6 +64,9 @@ export class PointPrimitiveLayer {
     if (this.destroyed) return;
     this.collection.removeAll();
     this.indexByNorad.clear();
+    this.typeByNorad.clear();
+    this.positionByNorad.clear();
+    this.highlighted = null;
 
     for (let i = 0; i < records.length; i++) {
       const r = records[i];
@@ -69,10 +80,45 @@ export class PointPrimitiveLayer {
         id: r.norad_id, // available via scene.pick().id
       });
       this.indexByNorad.set(r.norad_id, i);
+      this.typeByNorad.set(r.norad_id, type);
     }
     this.count = records.length;
 
     this.worker.postMessage({ type: 'load', tles: records });
+  }
+
+  /** Latest known ECEF position (meters) for the given NORAD, if any. */
+  getPosition(norad: number): Cesium.Cartesian3 | null {
+    return this.positionByNorad.get(norad) ?? null;
+  }
+
+  /**
+   * Visually emphasize a single satellite (white + larger). Pass null to
+   * clear. Restores the previous selection's original color/size.
+   */
+  setHighlight(norad: number | null): void {
+    if (this.highlighted === norad) return;
+    if (this.highlighted !== null) {
+      this.applyDefaultStyle(this.highlighted);
+    }
+    if (norad !== null) {
+      const idx = this.indexByNorad.get(norad);
+      if (idx !== undefined) {
+        const p = this.collection.get(idx);
+        p.color = HIGHLIGHT_COLOR;
+        p.pixelSize = HIGHLIGHT_PIXEL_SIZE;
+      }
+    }
+    this.highlighted = norad;
+  }
+
+  private applyDefaultStyle(norad: number): void {
+    const idx = this.indexByNorad.get(norad);
+    if (idx === undefined) return;
+    const type = (this.typeByNorad.get(norad) ?? 'UNKNOWN') as keyof typeof COLORS;
+    const p = this.collection.get(idx);
+    p.color = COLORS[type] ?? COLORS.UNKNOWN;
+    p.pixelSize = PIXEL_SIZES[type] ?? PIXEL_SIZES.UNKNOWN;
   }
 
   startPropagation(): void {
@@ -111,15 +157,17 @@ export class PointPrimitiveLayer {
     if (data.type === 'positions') {
       const { count, positions, noradIds } = data;
       for (let i = 0; i < count; i++) {
-        const idx = this.indexByNorad.get(noradIds[i]);
+        const norad = noradIds[i];
+        const idx = this.indexByNorad.get(norad);
         if (idx === undefined) continue;
-        const p = this.collection.get(idx);
         // worker emits km; Cesium wants meters.
-        p.position = new Cesium.Cartesian3(
+        const cartesian = new Cesium.Cartesian3(
           positions[i * 3] * 1000,
           positions[i * 3 + 1] * 1000,
           positions[i * 3 + 2] * 1000,
         );
+        this.collection.get(idx).position = cartesian;
+        this.positionByNorad.set(norad, cartesian);
       }
     }
   }

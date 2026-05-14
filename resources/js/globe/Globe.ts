@@ -15,7 +15,7 @@ const DEFAULT_GROUP = 'active';
  * Lit-element-agnostic — the imperative Cesium API doesn't benefit from
  * Lit's reactive render cycle.
  */
-class Globe {
+export class Globe {
   private viewer?: Cesium.Viewer;
   public layer?: PointPrimitiveLayer;
   public selection?: SelectionController;
@@ -69,6 +69,28 @@ class Globe {
     }
   }
 
+  /**
+   * Animate the camera to a position above the satellite, looking
+   * straight down. Uses the satellite's most recent ECEF position
+   * (whichever the worker last reported); does not continuously track.
+   */
+  flyToSatellite(norad: number, durationSeconds = 1.5): void {
+    if (!this.viewer || !this.layer) return;
+    const pos = this.layer.getPosition(norad);
+    if (pos === null) return; // worker hasn't reported a position yet
+
+    const carto = Cesium.Cartographic.fromCartesian(pos);
+    const lat = Cesium.Math.toDegrees(carto.latitude);
+    const lon = Cesium.Math.toDegrees(carto.longitude);
+    const camHeight = carto.height + 3_000_000; // 3000km above sat
+
+    this.viewer.camera.flyTo({
+      destination: Cesium.Cartesian3.fromDegrees(lon, lat, camHeight),
+      orientation: { heading: 0, pitch: -Math.PI / 2, roll: 0 },
+      duration: durationSeconds,
+    });
+  }
+
   destroy(): void {
     this.selection?.destroy();
     this.layer?.destroy();
@@ -87,7 +109,10 @@ export class SatGlobe extends LitElement {
   @state() private status = 'Initializing globe…';
   @state() private loaded = false;
 
-  private globe = new Globe();
+  // Exposed so <sat-app> can call flyToSatellite / layer.getPosition /
+  // layer.setHighlight from the host context without leaking the underlying
+  // Cesium objects directly.
+  public readonly globe = new Globe();
   private containerRef: Ref<HTMLDivElement> = createRef();
 
   static styles = css`
