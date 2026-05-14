@@ -21,7 +21,10 @@ use SatTrackr\Cli\Commands\RollbackCommand;
 use SatTrackr\Database\Connection;
 use SatTrackr\Database\Migrator;
 use SatTrackr\Http\Controllers\SpaShellController;
+use SatTrackr\Http\Middleware\CorsMiddleware;
 use SatTrackr\Http\Middleware\ErrorHandlerMiddleware;
+use SatTrackr\Http\Middleware\ETagMiddleware;
+use SatTrackr\Http\Middleware\JsonResponseMiddleware;
 use SatTrackr\Ingest\CelesTrakClient;
 use SatTrackr\Ingest\CelesTrakIngester;
 use SatTrackr\Ingest\TleParser;
@@ -82,6 +85,10 @@ final class Container
                     logger: $c->get(LoggerInterface::class),
                 );
             },
+
+            CorsMiddleware::class         => static fn () => new CorsMiddleware(),
+            ETagMiddleware::class         => static fn () => new ETagMiddleware(),
+            JsonResponseMiddleware::class => static fn () => new JsonResponseMiddleware(),
 
             Connection::class => static function () use ($rootDir): Connection {
                 $dbPath = EnvLoader::get('DB_PATH', 'data/sat.db') ?? 'data/sat.db';
