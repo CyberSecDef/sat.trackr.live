@@ -56,7 +56,10 @@ final class HealthCommand extends Command
         ];
 
         // Table row counts (only after migrations exist)
-        $tables = ['satellites', 'tle_current', 'tle_history', 'satellite_purposes'];
+        $tables = [
+            'satellites', 'tle_current', 'tle_history', 'satellite_purposes',
+            'group_membership', 'launch_sites', 'launches', 'reentries', 'pass_cache',
+        ];
         foreach ($tables as $table) {
             try {
                 $count = $this->connection->pdo()
@@ -68,6 +71,25 @@ final class HealthCommand extends Command
             } catch (Throwable) {
                 $rows[] = ["table: {$table}", 'not created', '<comment>migrate first</comment>'];
             }
+        }
+
+        // SATCAT enrichment coverage (Phase 2 chunk 1+).
+        try {
+            $total = (int) $this->connection->pdo()->query('SELECT COUNT(*) FROM satellites')->fetchColumn();
+            $enriched = (int) $this->connection->pdo()
+                ->query("SELECT COUNT(*) FROM satellites WHERE status != 'UNKNOWN'")
+                ->fetchColumn();
+            $pct = $total > 0 ? (100.0 * $enriched / $total) : 0.0;
+            $statusLabel = $total === 0
+                ? '<comment>no catalog</comment>'
+                : ($pct >= 90 ? '<info>healthy</info>' : '<comment>run ingest:satcat</comment>');
+            $rows[] = [
+                'SATCAT enriched',
+                sprintf('%s / %s satellites (%.1f%%)', number_format($enriched), number_format($total), $pct),
+                $statusLabel,
+            ];
+        } catch (Throwable) {
+            // ignore — table may not exist yet
         }
 
         $io->table(['Check', 'Value', 'Status'], $rows);
