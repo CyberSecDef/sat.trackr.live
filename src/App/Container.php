@@ -20,9 +20,14 @@ use SatTrackr\Cli\Commands\MigrateStatusCommand;
 use SatTrackr\Cli\Commands\RollbackCommand;
 use SatTrackr\Database\Connection;
 use SatTrackr\Database\Migrator;
+use SatTrackr\Http\Controllers\AutocompleteController;
+use SatTrackr\Http\Controllers\GroupDetailController;
+use SatTrackr\Http\Controllers\GroupListController;
+use SatTrackr\Http\Controllers\GroupTlesController;
 use SatTrackr\Http\Controllers\SatelliteDetailController;
 use SatTrackr\Http\Controllers\SatelliteListController;
 use SatTrackr\Http\Controllers\SatelliteTleController;
+use SatTrackr\Http\Controllers\SearchController;
 use SatTrackr\Http\Controllers\SpaShellController;
 use SatTrackr\Http\Middleware\CorsMiddleware;
 use SatTrackr\Http\Middleware\ErrorHandlerMiddleware;
@@ -106,6 +111,11 @@ final class Container
                 $c->get(Connection::class),
                 $c->get(FreshnessClassifier::class),
             ),
+            GroupListController::class       => static fn (DIContainer $c) => new GroupListController($c->get(Connection::class)),
+            GroupDetailController::class     => static fn (DIContainer $c) => new GroupDetailController($c->get(Connection::class)),
+            GroupTlesController::class       => static fn (DIContainer $c) => new GroupTlesController($c->get(Connection::class)),
+            SearchController::class          => static fn (DIContainer $c) => new SearchController($c->get(Connection::class)),
+            AutocompleteController::class    => static fn (DIContainer $c) => new AutocompleteController($c->get(Connection::class)),
 
             Connection::class => static function () use ($rootDir): Connection {
                 $dbPath = EnvLoader::get('DB_PATH', 'data/sat.db') ?? 'data/sat.db';

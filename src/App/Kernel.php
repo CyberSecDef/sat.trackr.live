@@ -4,9 +4,14 @@ declare(strict_types=1);
 
 namespace SatTrackr\App;
 
+use SatTrackr\Http\Controllers\AutocompleteController;
+use SatTrackr\Http\Controllers\GroupDetailController;
+use SatTrackr\Http\Controllers\GroupListController;
+use SatTrackr\Http\Controllers\GroupTlesController;
 use SatTrackr\Http\Controllers\SatelliteDetailController;
 use SatTrackr\Http\Controllers\SatelliteListController;
 use SatTrackr\Http\Controllers\SatelliteTleController;
+use SatTrackr\Http\Controllers\SearchController;
 use SatTrackr\Http\Controllers\SpaShellController;
 use SatTrackr\Http\Middleware\CorsMiddleware;
 use SatTrackr\Http\Middleware\ErrorHandlerMiddleware;
@@ -50,7 +55,11 @@ final class Kernel
             $api->get('/satellites', SatelliteListController::class);
             $api->get('/satellites/{norad:[0-9]+}', SatelliteDetailController::class);
             $api->get('/satellites/{norad:[0-9]+}/tle', SatelliteTleController::class);
-            // Group + search routes register in chunk 4D.
+            $api->get('/groups', GroupListController::class);
+            $api->get('/groups/{slug:[a-zA-Z0-9_\-]+}', GroupDetailController::class);
+            $api->get('/groups/{slug:[a-zA-Z0-9_\-]+}/tles', GroupTlesController::class);
+            $api->get('/search', SearchController::class);
+            $api->get('/autocomplete', AutocompleteController::class);
         })
             ->add(JsonResponseMiddleware::class)
             ->add(ETagMiddleware::class);
