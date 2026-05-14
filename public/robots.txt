@@ -1,0 +1,5 @@
+User-agent: *
+Allow: /
+Disallow: /api/v1/satellites/*/tle/history
+
+Sitemap: https://sat.trackr.live/sitemap.xml
