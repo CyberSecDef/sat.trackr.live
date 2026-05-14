@@ -18,7 +18,7 @@ Part of the **trackr.live family** alongside [trackr.live](https://trackr.live) 
 | 1.5. WebGL fallback gate | ⏳ pending | Client-side WebGL detection; `<sat-no-webgl>` notice when absent, with link to text-only catalog |
 | 2. Schema + migrations | ✅ done | `bin/console` (Symfony Console) with `migrate / rollback / migrate:status / make:migration / health`; `satellites`, `satellites_fts` (with sync triggers), `tle_current`, `tle_history`, `satellite_purposes` tables — verified by 7-test PHPUnit feature suite |
 | 3. CelesTrak ingester | ✅ done | `make ingest` (or `--group=slug`) populates ~15.6K distinct satellites from CelesTrak's 38 GP groups in ~40s; idempotent re-runs honor CelesTrak's 403 "not modified" politeness signal. TleParser does mod-10 checksum + epoch + element extraction; CelesTrakIngester does upsert-preserving-SATCAT-fields + INSERT OR IGNORE history. 12 new tests, 19 total passing. |
-| 4. API endpoints | ⏳ pending | `/api/v1/satellites*`, `/api/v1/groups/{slug}/tles`, `/api/v1/search`, ETag + CORS middleware |
+| 4. API endpoints | ✅ done | 8 JSON endpoints under `/api/v1/`: `/satellites`, `/satellites/{norad}`, `/satellites/{norad}/tle`, `/groups`, `/groups/{slug}`, `/groups/{slug}/tles`, `/search`, `/autocomplete`. App-level CORS (handles OPTIONS preflight before routing); per-group ETag (304 round-trip) + JSON Content-Type + Cache-Control middleware. New `group_membership` migration tracks per-group inclusion. 16 new feature tests, **36 total passing**. |
 | 5. Globe rendering | ⏳ pending | Bulk TLE fetch, satellite.js SGP4 in a Web Worker, Cesium point primitives color-coded by type |
 | 6. Detail panel + search | ⏳ pending | Click-to-select, populated detail panel per req_spec §10, FTS5-backed search results |
 | 7. Time scrubbing | ⏳ pending | ±7d timeline with yellow band beyond ±48h, play/pause, speed controls |
@@ -29,6 +29,31 @@ See [`docs/phase1.md`](docs/phase1.md) for the full phase design and [`req_spec.
 ---
 
 ## What's testable today
+
+### From the browser or your phone — public JSON API
+
+The catalog API is live at `http://localhost:8000/api/v1/...` (or the LAN URL). Try any of these in a browser, with `curl`, or from your phone:
+
+```bash
+# Catalog
+curl http://localhost:8000/api/v1/satellites?limit=5
+curl http://localhost:8000/api/v1/satellites?country=US&type=PAYLOAD&limit=10
+curl http://localhost:8000/api/v1/satellites?q=hubble        # FTS5 fuzzy
+curl http://localhost:8000/api/v1/satellites/25544           # ISS detail (TLE inlined)
+curl http://localhost:8000/api/v1/satellites/25544/tle       # ISS current TLE only
+
+# Groups (38 CelesTrak groups configured)
+curl http://localhost:8000/api/v1/groups
+curl http://localhost:8000/api/v1/groups/stations            # 27 NORAD IDs
+curl http://localhost:8000/api/v1/groups/starlink/tles       # bulk: 10K Starlinks
+
+# Search
+curl 'http://localhost:8000/api/v1/search?q=ISS'             # ISS family modules
+curl 'http://localhost:8000/api/v1/search?q=1998-067A'       # by intl designator
+curl 'http://localhost:8000/api/v1/autocomplete?q=star'      # typeahead
+```
+
+Every response carries an `ETag`; pass it back via `If-None-Match` to get a 304 Not Modified. CORS is fully open (`Access-Control-Allow-Origin: *`) and OPTIONS preflight returns 204 in <5ms.
 
 ### In the browser
 
@@ -74,7 +99,23 @@ The schema after `make migrate` matches `docs/phase1.md` § V exactly:
 | `tle_current` | One TLE per active object | FK to satellites, ON DELETE CASCADE; mean motion + eccentricity + inclination + RAAN + arg perigee + mean anomaly + BSTAR + rev number, plus derived period / perigee / apogee / semi-major axis |
 | `tle_history` | Append-only TLE archive | Composite PK `(norad_id, epoch)`; INSERT OR IGNORE makes re-ingests cheap |
 | `satellite_purposes` | Join table for §5 SET-style purpose | Empty in Phase 1; populated by SATCAT in Phase 2 |
+| `group_membership` | Join table tracking which CelesTrak group(s) include each satellite | Composite PK `(norad_id, group_slug)` + `last_seen_at`; populated by the ingester on each pass; powers `/api/v1/groups/{slug}*` |
 | `migrations` | Auto-created by Migrator | Tracks applied filename + batch + timestamp |
+
+### API endpoint reference (chunk 4)
+
+| Method + path | Returns | Notes |
+|---|---|---|
+| `GET /api/v1/satellites` | Paginated list `{data, meta, links}` | Filters: `country`, `type`, `status`, `orbit_class` (multi via comma); `operator` (substring); `launched_after`/`launched_before` (ISO date); `q` (FTS5); `page`, `limit` (max 500) |
+| `GET /api/v1/satellites/{norad}` | Full detail with `tle_current` inlined | Includes `freshness` label (FRESH/STALE/AGED/OLD per §11) and `epoch_age_seconds`; 404 on unknown NORAD |
+| `GET /api/v1/satellites/{norad}/tle` | Current TLE only | For clients that already have catalog metadata |
+| `GET /api/v1/groups` | All 38 CelesTrak groups + counts | 1h cacheable |
+| `GET /api/v1/groups/{slug}` | Group + ordered NORAD IDs | 5min cacheable |
+| `GET /api/v1/groups/{slug}/tles` | Bulk TLE blob `{group, count, tles: [...]}` | The hot SPA endpoint; full keys (`norad_id`, `name`, `line1`, `line2`, `object_type`) for readability |
+| `GET /api/v1/search?q=` | Up to 50 results, each with `match_type` | NORAD ID exact > intl designator exact > FTS5 fuzzy |
+| `GET /api/v1/autocomplete?q=` | Up to 10 typeahead results | NORAD ID prefix + FTS5 prefix; 5min cacheable |
+
+Default response headers: `Content-Type: application/json; charset=utf-8`, `Cache-Control: public, max-age=60, stale-while-revalidate=120` (controllers override per-route — bulk-TLE uses 300s, group lists use 3600s), `ETag: W/"<sha1-of-body>"` plus open CORS (`*`). `If-None-Match` → 304.
 
 ### CelesTrak ingest details
 
