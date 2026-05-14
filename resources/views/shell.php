@@ -67,7 +67,8 @@ $selectedAttr = $selectedNorad !== null
         <span class="app-loading__glyph" aria-hidden="true">⊕</span>
         <span class="app-loading__name"><?= htmlspecialchars($appName, ENT_QUOTES) ?></span>
       </div>
-      <div class="app-loading__status">Loading globe…</div>
+      <div class="app-loading__status">Loading 15,000 satellites…</div>
+      <div class="app-loading__build">build: <?= substr(@trim((string) @shell_exec('git -C ' . escapeshellarg(dirname(__DIR__, 2)) . ' rev-parse --short HEAD 2>/dev/null')) ?: 'unknown', 0, 12) ?></div>
     </div>
     <noscript>
       <div class="app-noscript">
