@@ -38,19 +38,26 @@ final class MigrationsTest extends TestCase
         }
     }
 
-    public function testMigratorAppliesAllPhaseOneMigrations(): void
+    public function testMigratorAppliesAllPhaseOneAndTwoMigrations(): void
     {
         $applied = $this->migrator->migrate();
 
-        $this->assertCount(6, $applied);
+        $this->assertCount(11, $applied);
         $this->assertSame(
             [
+                // Phase 1
                 '2026_05_14_000001_create_satellites_table',
                 '2026_05_14_000002_create_satellites_fts_table',
                 '2026_05_14_000003_create_tle_current_table',
                 '2026_05_14_000004_create_tle_history_table',
                 '2026_05_14_000005_create_satellite_purposes_table',
                 '2026_05_14_000006_create_group_membership_table',
+                // Phase 2 (chunk 1)
+                '2026_05_14_000007_add_launch_site_code_to_satellites_table',
+                '2026_05_14_000008_create_launch_sites_table',
+                '2026_05_14_000009_create_launches_table',
+                '2026_05_14_000010_create_reentries_table',
+                '2026_05_14_000011_create_pass_cache_table',
             ],
             $applied
         );
@@ -60,7 +67,13 @@ final class MigrationsTest extends TestCase
     {
         $this->migrator->migrate();
 
-        $expected = ['satellites', 'satellites_fts', 'tle_current', 'tle_history', 'satellite_purposes', 'group_membership'];
+        $expected = [
+            // Phase 1
+            'satellites', 'satellites_fts', 'tle_current', 'tle_history',
+            'satellite_purposes', 'group_membership',
+            // Phase 2 chunk 1
+            'launch_sites', 'launches', 'reentries', 'pass_cache',
+        ];
         foreach ($expected as $table) {
             $count = $this->connection->pdo()
                 ->query("SELECT COUNT(*) FROM {$table}")
@@ -141,11 +154,11 @@ final class MigrationsTest extends TestCase
     {
         $this->migrator->migrate();
         $rolled = $this->migrator->rollback();
-        $this->assertCount(6, $rolled);
+        $this->assertCount(11, $rolled);
 
-        // Tables should be gone
+        // All app tables should be gone (the migrations table itself stays).
         $stmt = $this->connection->pdo()
-            ->query("SELECT name FROM sqlite_master WHERE type='table' AND name IN ('satellites','tle_current','tle_history','satellite_purposes','group_membership')");
+            ->query("SELECT name FROM sqlite_master WHERE type='table' AND name IN ('satellites','tle_current','tle_history','satellite_purposes','group_membership','launches','launch_sites','reentries','pass_cache')");
         $this->assertNotFalse($stmt);
         $remaining = $stmt->fetchAll(\PDO::FETCH_COLUMN, 0);
         $this->assertSame([], $remaining);
