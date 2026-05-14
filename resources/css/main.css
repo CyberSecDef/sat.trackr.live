@@ -1,0 +1,107 @@
+/* Theme variable definitions — order matters: later themes override earlier */
+@import './themes/dark.css';
+@import './themes/light.css';
+@import './themes/high-contrast.css';
+
+/* ---------------------------------------------------------------------------
+   Base reset
+--------------------------------------------------------------------------- */
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+  height: 100vh;
+  width: 100vw;
+  overflow: hidden;
+  font-family: var(--font-body);
+  color: var(--color-text);
+  background: var(--color-bg);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+a {
+  color: var(--color-accent);
+  text-decoration: none;
+}
+a:hover {
+  text-decoration: underline;
+}
+
+/* ---------------------------------------------------------------------------
+   Top-level app container
+--------------------------------------------------------------------------- */
+
+sat-app {
+  display: block;
+  position: relative;
+  height: 100vh;
+  width: 100vw;
+}
+
+/* ---------------------------------------------------------------------------
+   Pre-hydration loading state (visible until <sat-app> upgrades)
+--------------------------------------------------------------------------- */
+
+.app-loading {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1rem;
+  background: var(--color-bg);
+  color: var(--color-text);
+}
+
+.app-loading__brand {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  font-size: 1.4rem;
+  font-weight: 500;
+}
+
+.app-loading__glyph {
+  color: var(--color-accent);
+  font-size: 1.8rem;
+}
+
+.app-loading__name {
+  font-family: var(--font-mono);
+}
+
+.app-loading__status {
+  color: var(--color-text-muted);
+  font-size: 0.9rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+/* ---------------------------------------------------------------------------
+   <noscript> fallback
+--------------------------------------------------------------------------- */
+
+.app-noscript {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 2rem;
+  text-align: center;
+  background: var(--color-bg);
+  color: var(--color-text);
+}
+.app-noscript h1 {
+  color: var(--color-danger);
+}

@@ -1,0 +1,32 @@
+:root[data-theme='high-contrast'] {
+  --color-bg: #000000;
+  --color-bg-elevated: #1a1a1a;
+  --color-bg-overlay: rgba(0, 0, 0, 0.95);
+
+  --color-text: #ffffff;
+  --color-text-muted: #d0d0d0;
+  --color-text-dim: #a0a0a0;
+
+  --color-accent: #ffff00;
+  --color-accent-dim: #808000;
+
+  --color-warning: #ff8c00;
+  --color-danger: #ff0000;
+  --color-success: #00ff00;
+
+  --color-border: #ffffff;
+  --color-border-strong: #ffffff;
+
+  --color-payload: #00ffff;
+  --color-rocket: #ff8c00;
+  --color-debris: #ff0000;
+  --color-tba: #c0c0c0;
+
+  --color-fresh: #00ff00;
+  --color-stale: #ffff00;
+  --color-aged: #ff8c00;
+  --color-old: #ff0000;
+
+  --font-body: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  --font-mono: 'JetBrains Mono', 'IBM Plex Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
+}

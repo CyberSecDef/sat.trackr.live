@@ -1,0 +1,34 @@
+:root[data-theme='dark'] {
+  --color-bg: #0a0e27;
+  --color-bg-elevated: #141b3d;
+  --color-bg-overlay: rgba(10, 14, 39, 0.85);
+
+  --color-text: #e0e6f0;
+  --color-text-muted: #8a96b3;
+  --color-text-dim: #5a6480;
+
+  --color-accent: #00d9ff;
+  --color-accent-dim: #006e80;
+
+  --color-warning: #ffb700;
+  --color-danger: #ff3860;
+  --color-success: #23d160;
+
+  --color-border: #1f2950;
+  --color-border-strong: #303a6a;
+
+  /* Object color coding (matches PointPrimitiveLayer) */
+  --color-payload: #00d9ff;
+  --color-rocket: #ffb700;
+  --color-debris: #ff3860;
+  --color-tba: #888888;
+
+  /* Freshness badges */
+  --color-fresh: #00d9ff;
+  --color-stale: #ffb700;
+  --color-aged: #ff8c00;
+  --color-old: #ff3860;
+
+  --font-body: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  --font-mono: 'JetBrains Mono', 'IBM Plex Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
+}
