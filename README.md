@@ -19,7 +19,7 @@ Part of the **trackr.live family** alongside [trackr.live](https://trackr.live) 
 | 2. Schema + migrations | ✅ done | `bin/console` (Symfony Console) with `migrate / rollback / migrate:status / make:migration / health`; `satellites`, `satellites_fts` (with sync triggers), `tle_current`, `tle_history`, `satellite_purposes` tables — verified by 7-test PHPUnit feature suite |
 | 3. CelesTrak ingester | ✅ done | `make ingest` (or `--group=slug`) populates ~15.6K distinct satellites from CelesTrak's 38 GP groups in ~40s; idempotent re-runs honor CelesTrak's 403 "not modified" politeness signal. TleParser does mod-10 checksum + epoch + element extraction; CelesTrakIngester does upsert-preserving-SATCAT-fields + INSERT OR IGNORE history. 12 new tests, 19 total passing. |
 | 4. API endpoints | ✅ done | 8 JSON endpoints under `/api/v1/`: `/satellites`, `/satellites/{norad}`, `/satellites/{norad}/tle`, `/groups`, `/groups/{slug}`, `/groups/{slug}/tles`, `/search`, `/autocomplete`. App-level CORS (handles OPTIONS preflight before routing); per-group ETag (304 round-trip) + JSON Content-Type + Cache-Control middleware. New `group_membership` migration tracks per-group inclusion. 16 new feature tests, **36 total passing**. |
-| 5. Globe rendering | ⏳ pending | Bulk TLE fetch, satellite.js SGP4 in a Web Worker, Cesium point primitives color-coded by type |
+| 5. Globe rendering | ✅ done | The globe is no longer empty: ~15K satellites rendered as `Cesium.PointPrimitiveCollection`, color-coded by `object_type`. SGP4 propagation runs in a `Web Worker` at 4Hz (every 250ms), positions transferred as `Float32Array` (no copy). Click-to-select wired via `Cesium.Scene.pick`; `<sat-globe>` dispatches `'select'` CustomEvents that `<sat-app>` displays as a placeholder pill (real detail panel arrives in chunk 6). Live status pill shows "Tracking 15,665 satellites" then fades. 9 new Vitest cases for the API client; **45 total tests passing**. |
 | 6. Detail panel + search | ⏳ pending | Click-to-select, populated detail panel per req_spec §10, FTS5-backed search results |
 | 7. Time scrubbing | ⏳ pending | ±7d timeline with yellow band beyond ±48h, play/pause, speed controls |
 | 8. Text-only catalog at /text | ⏳ pending | Server-rendered fallback for browsers without WebGL or with JS disabled (depends on chunk 4 API) |
@@ -60,14 +60,15 @@ Every response carries an `ETag`; pass it back via `If-None-Match` to get a 304 
 Open `http://localhost:8000` (or the LAN URL printed by `make`). You should see:
 
 - **Top bar**: `⊕ sat.trackr.live` wordmark, `Space situational awareness, _legible_` tagline, `§ catalog · § launches · § events` nav (launches/events are dim placeholders), search input with `⌘K` shortcut hint, theme switcher button.
-- **Cesium globe**: full-viewport 3D Earth using OpenStreetMap imagery (no Cesium ion token needed yet). Lighting from sun, atmosphere, fog enabled. Drag to rotate, pinch/scroll to zoom.
-- **Theme switcher**: click the toggle (top right) to cycle Dark / Light / High contrast. Choice persists in `localStorage`. CSS variables propagate instantly through every component.
-- **⌘K** (or `Ctrl-K`): focuses the search input. The input is functional but doesn't search anything yet — full search lands in chunk 6.
-- **No satellites yet** — the catalog ingest + globe rendering chunks haven't landed. The globe is empty by design.
+- **Cesium globe with ~15,000 satellites** rendered as point primitives, color-coded by `object_type` (cyan = payloads + unknown, amber = rocket bodies, red = debris, gray = TBA). SGP4 propagation runs in a Web Worker at 4Hz; you should see the ISS marching across the planet, Starlink trains in formation, and ~10K LEO objects in slow-motion swarm. Drag to rotate, pinch/scroll to zoom. OpenStreetMap imagery (no Cesium ion token needed yet).
+- **Click any dot** to select it — a small `§ NORAD <id>` pill appears top-right (placeholder until chunk 6 wires the full detail panel).
+- **Status pill** in the bottom-left corner shows the load progression: "Loading satellite catalog…" → "Parsing 15,665 TLEs…" → "Tracking 15,665 satellites" (then fades to half-opacity).
+- **Theme switcher**: click the toggle (top right) to cycle Dark / Light / High contrast. Choice persists in `localStorage`.
+- **⌘K** (or `Ctrl-K`): focuses the search input. The input is non-functional until chunk 6.
 
 URL shapes already wired:
-- `/` → SPA shell
-- `/satellite/{norad}` → SPA shell with the NORAD ID surfaced as a property on `<sat-app>` (no detail panel yet to render it; chunk 6)
+- `/` → SPA shell with full globe
+- `/satellite/{norad}` → SPA shell with the NORAD ID picked up as initial selection (placeholder pill renders it; full detail panel hydration arrives in chunk 6)
 
 ### From the CLI
 
