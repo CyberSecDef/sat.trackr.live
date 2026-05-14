@@ -73,7 +73,7 @@ final class CelesTrakIngester
                 }
 
                 try {
-                    $this->upsert($tle, $report);
+                    $this->upsert($tle, $group, $report);
                     $groupRecords++;
                 } catch (Throwable $e) {
                     $report->recordReject($group, $tle->noradId, 'upsert failed: ' . $e->getMessage());
@@ -115,6 +115,7 @@ final class CelesTrakIngester
     private \PDOStatement $upsertSatellite;
     private \PDOStatement $upsertTleCurrent;
     private \PDOStatement $insertTleHistory;
+    private \PDOStatement $upsertGroupMembership;
 
     private function prepareStatements(): void
     {
@@ -182,6 +183,16 @@ final class CelesTrakIngester
               'CELESTRAK', :now
             )
             SQL);
+
+        // Group membership — refreshed on each ingest pass so we know which
+        // group(s) currently include each satellite. Composite PK + UPSERT
+        // keeps the table small.
+        $this->upsertGroupMembership = $this->prepare($pdo, <<<'SQL'
+            INSERT INTO group_membership (norad_id, group_slug, last_seen_at)
+            VALUES (:norad_id, :group_slug, :now)
+            ON CONFLICT(norad_id, group_slug) DO UPDATE SET
+              last_seen_at = excluded.last_seen_at
+            SQL);
     }
 
     private function prepare(PDO $pdo, string $sql): \PDOStatement
@@ -193,7 +204,7 @@ final class CelesTrakIngester
         return $stmt;
     }
 
-    private function upsert(ParsedTle $tle, IngestReport $report): void
+    private function upsert(ParsedTle $tle, string $groupSlug, IngestReport $report): void
     {
         $now = (new \DateTimeImmutable('now', new \DateTimeZone('UTC')))->format('Y-m-d\TH:i:s.u\Z');
 
@@ -232,5 +243,11 @@ final class CelesTrakIngester
         if ($this->insertTleHistory->rowCount() > 0) {
             $report->tleHistoryAdded++;
         }
+
+        $this->upsertGroupMembership->execute([
+            'norad_id'   => $tle->noradId,
+            'group_slug' => $groupSlug,
+            'now'        => $now,
+        ]);
     }
 }

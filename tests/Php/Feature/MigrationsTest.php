@@ -38,11 +38,11 @@ final class MigrationsTest extends TestCase
         }
     }
 
-    public function testMigratorAppliesAllFivePhaseOneMigrations(): void
+    public function testMigratorAppliesAllPhaseOneMigrations(): void
     {
         $applied = $this->migrator->migrate();
 
-        $this->assertCount(5, $applied);
+        $this->assertCount(6, $applied);
         $this->assertSame(
             [
                 '2026_05_14_000001_create_satellites_table',
@@ -50,6 +50,7 @@ final class MigrationsTest extends TestCase
                 '2026_05_14_000003_create_tle_current_table',
                 '2026_05_14_000004_create_tle_history_table',
                 '2026_05_14_000005_create_satellite_purposes_table',
+                '2026_05_14_000006_create_group_membership_table',
             ],
             $applied
         );
@@ -59,7 +60,7 @@ final class MigrationsTest extends TestCase
     {
         $this->migrator->migrate();
 
-        $expected = ['satellites', 'satellites_fts', 'tle_current', 'tle_history', 'satellite_purposes'];
+        $expected = ['satellites', 'satellites_fts', 'tle_current', 'tle_history', 'satellite_purposes', 'group_membership'];
         foreach ($expected as $table) {
             $count = $this->connection->pdo()
                 ->query("SELECT COUNT(*) FROM {$table}")
@@ -140,11 +141,11 @@ final class MigrationsTest extends TestCase
     {
         $this->migrator->migrate();
         $rolled = $this->migrator->rollback();
-        $this->assertCount(5, $rolled);
+        $this->assertCount(6, $rolled);
 
         // Tables should be gone
         $stmt = $this->connection->pdo()
-            ->query("SELECT name FROM sqlite_master WHERE type='table' AND name IN ('satellites','tle_current','tle_history','satellite_purposes')");
+            ->query("SELECT name FROM sqlite_master WHERE type='table' AND name IN ('satellites','tle_current','tle_history','satellite_purposes','group_membership')");
         $this->assertNotFalse($stmt);
         $remaining = $stmt->fetchAll(\PDO::FETCH_COLUMN, 0);
         $this->assertSame([], $remaining);

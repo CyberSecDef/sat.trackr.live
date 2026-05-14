@@ -73,7 +73,7 @@ final class CelesTrakIngesterTest extends TestCase
         }
     }
 
-    public function testIngestsOneGroupAndPopulatesAllThreeTables(): void
+    public function testIngestsOneGroupAndPopulatesAllFourTables(): void
     {
         $ingester = $this->makeIngester([new Response(200, [], self::ISS_BODY)]);
 
@@ -90,6 +90,7 @@ final class CelesTrakIngesterTest extends TestCase
         $this->assertSame(1, $this->countRows('satellites'));
         $this->assertSame(1, $this->countRows('tle_current'));
         $this->assertSame(1, $this->countRows('tle_history'));
+        $this->assertSame(1, $this->countRows('group_membership'));
 
         // Field correctness on the ISS row
         $sat = $this->fetchOne('SELECT * FROM satellites WHERE norad_id = 25544');
@@ -100,6 +101,27 @@ final class CelesTrakIngesterTest extends TestCase
         $this->assertEqualsWithDelta(15.49211692, (float) $tle['mean_motion'], 1e-7);
         $this->assertEqualsWithDelta(51.6312, (float) $tle['inclination_deg'], 1e-4);
         $this->assertSame('CELESTRAK', $tle['source']);
+
+        // Group membership
+        $mem = $this->fetchOne('SELECT * FROM group_membership WHERE norad_id = 25544');
+        $this->assertSame('stations', $mem['group_slug']);
+    }
+
+    public function testSameSatelliteInTwoGroupsGetsTwoMembershipRows(): void
+    {
+        $ingester = $this->makeIngester([
+            new Response(200, [], self::ISS_BODY),
+            new Response(200, [], self::ISS_BODY),
+        ]);
+
+        $ingester->run(['active', 'stations']);
+
+        $this->assertSame(1, $this->countRows('satellites'));
+        $this->assertSame(2, $this->countRows('group_membership'));
+
+        $stmt = $this->db->pdo()->query("SELECT group_slug FROM group_membership WHERE norad_id = 25544 ORDER BY group_slug");
+        $slugs = $stmt->fetchAll(\PDO::FETCH_COLUMN, 0);
+        $this->assertSame(['active', 'stations'], $slugs);
     }
 
     public function testRerunningWithIdenticalDataAddsNoHistoryRow(): void
