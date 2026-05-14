@@ -3,7 +3,9 @@ import { customElement, property, state } from 'lit/decorators.js';
 import { ref, createRef, type Ref } from 'lit/directives/ref.js';
 import type * as Cesium from 'cesium';
 import type { SatGlobe } from './globe/Globe';
+import type { Clock } from './time/Clock';
 import './ui/DetailPanel';
+import './ui/Timeline';
 
 @customElement('sat-app')
 export class SatApp extends LitElement {
@@ -16,6 +18,9 @@ export class SatApp extends LitElement {
   /** NORAD of the currently-selected satellite, or null. */
   @state() private selected: number | null = null;
 
+  /** Clock published by <sat-globe> once it's initialized. */
+  @state() private clock: Clock | null = null;
+
   private globeRef: Ref<SatGlobe> = createRef();
 
   static styles = css`
@@ -27,7 +32,7 @@ export class SatApp extends LitElement {
     }
     .layout {
       display: grid;
-      grid-template-rows: auto 1fr;
+      grid-template-rows: auto 1fr auto;
       height: 100%;
       width: 100%;
     }
@@ -45,6 +50,7 @@ export class SatApp extends LitElement {
     this.addEventListener('select', this.handleSelect as EventListener);
     this.addEventListener('search-select', this.handleSearchSelect as EventListener);
     this.addEventListener('panel-close', this.handlePanelClose as EventListener);
+    this.addEventListener('clock-ready', this.handleClockReady as EventListener);
   }
 
   disconnectedCallback(): void {
@@ -52,7 +58,12 @@ export class SatApp extends LitElement {
     this.removeEventListener('select', this.handleSelect as EventListener);
     this.removeEventListener('search-select', this.handleSearchSelect as EventListener);
     this.removeEventListener('panel-close', this.handlePanelClose as EventListener);
+    this.removeEventListener('clock-ready', this.handleClockReady as EventListener);
   }
+
+  private handleClockReady = (e: CustomEvent<{ clock: Clock }>): void => {
+    this.clock = e.detail.clock;
+  };
 
   /** Click-on-globe → just set selection (no camera fly). */
   private handleSelect = (e: CustomEvent<{ norad: number | null }>): void => {
@@ -96,6 +107,7 @@ export class SatApp extends LitElement {
             .getCurrentPosition=${this.getCurrentPosition}
           ></sat-detail-panel>
         </div>
+        <sat-timeline .clock=${this.clock}></sat-timeline>
       </div>
     `;
   }

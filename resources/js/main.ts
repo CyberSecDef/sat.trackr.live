@@ -7,6 +7,7 @@ import './ui/ThemeSwitcher';
 import './ui/Search';
 import './ui/TopBar';
 import './ui/DetailPanel';
+import './ui/Timeline';
 import './globe/Globe';
 import './App';
 

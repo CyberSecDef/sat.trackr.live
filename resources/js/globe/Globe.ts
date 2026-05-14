@@ -183,6 +183,15 @@ export class SatGlobe extends LitElement {
           window.setTimeout(() => this.requestUpdate(), 3000);
         }
       },
+      onClockReady: (clock) => {
+        this.dispatchEvent(
+          new CustomEvent('clock-ready', {
+            detail: { clock },
+            bubbles: true,
+            composed: true,
+          }),
+        );
+      },
     });
   }
 
