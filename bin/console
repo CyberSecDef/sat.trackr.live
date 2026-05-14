@@ -1,0 +1,17 @@
+#!/usr/bin/env php
+<?php
+
+declare(strict_types=1);
+
+require_once __DIR__ . '/../vendor/autoload.php';
+
+use SatTrackr\App\Container;
+use SatTrackr\App\EnvLoader;
+use SatTrackr\Cli\ConsoleKernel;
+
+$rootDir = dirname(__DIR__);
+EnvLoader::load($rootDir);
+
+$container = Container::build($rootDir);
+$app = ConsoleKernel::create($container);
+exit($app->run());

@@ -10,6 +10,11 @@ use Monolog\Handler\StreamHandler;
 use Monolog\Level;
 use Monolog\Logger;
 use Psr\Log\LoggerInterface;
+use SatTrackr\Cli\Commands\HealthCommand;
+use SatTrackr\Cli\Commands\MakeMigrationCommand;
+use SatTrackr\Cli\Commands\MigrateCommand;
+use SatTrackr\Cli\Commands\MigrateStatusCommand;
+use SatTrackr\Cli\Commands\RollbackCommand;
 use SatTrackr\Database\Connection;
 use SatTrackr\Database\Migrator;
 use SatTrackr\Http\Controllers\SpaShellController;
@@ -81,6 +86,16 @@ final class Container
                     migrationsDir: $rootDir . '/migrations',
                 );
             },
+
+            // CLI commands
+            MigrateCommand::class       => static fn (DIContainer $c) => new MigrateCommand($c->get(Migrator::class)),
+            RollbackCommand::class      => static fn (DIContainer $c) => new RollbackCommand($c->get(Migrator::class)),
+            MigrateStatusCommand::class => static fn (DIContainer $c) => new MigrateStatusCommand($c->get(Migrator::class)),
+            MakeMigrationCommand::class => static fn () => new MakeMigrationCommand($rootDir . '/migrations'),
+            HealthCommand::class        => static fn (DIContainer $c) => new HealthCommand(
+                $c->get(Connection::class),
+                $c->get(Migrator::class),
+            ),
         ]);
 
         return $builder->build();

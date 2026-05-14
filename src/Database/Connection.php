@@ -25,7 +25,7 @@ final class Connection
             $dbPath = getcwd() . '/' . $dbPath;
         }
 
-        $this->ensureDirectoryExists($dbPath);
+        $this->ensurePath($dbPath);
 
         $this->capsule = new Capsule();
         $this->capsule->addConnection([
@@ -61,7 +61,14 @@ final class Connection
         return $pdo;
     }
 
-    private function ensureDirectoryExists(string $dbPath): void
+    /**
+     * Ensure the parent directory exists AND the db file exists. The latter
+     * matters because illuminate/database 11's SQLiteConnector calls
+     * realpath() and falls back to Laravel's base_path() helper (which
+     * doesn't exist standalone) when the file is missing. Touching the file
+     * first sidesteps that path entirely.
+     */
+    private function ensurePath(string $dbPath): void
     {
         if ($dbPath === ':memory:') {
             return;
@@ -69,6 +76,9 @@ final class Connection
         $dir = dirname($dbPath);
         if (!is_dir($dir) && !mkdir($dir, 0o755, true) && !is_dir($dir)) {
             throw new RuntimeException("Could not create database directory: {$dir}");
+        }
+        if (!file_exists($dbPath)) {
+            touch($dbPath);
         }
     }
 }

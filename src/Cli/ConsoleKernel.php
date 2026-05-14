@@ -1,0 +1,29 @@
+<?php
+
+declare(strict_types=1);
+
+namespace SatTrackr\Cli;
+
+use DI\Container as DIContainer;
+use SatTrackr\Cli\Commands\HealthCommand;
+use SatTrackr\Cli\Commands\MakeMigrationCommand;
+use SatTrackr\Cli\Commands\MigrateCommand;
+use SatTrackr\Cli\Commands\MigrateStatusCommand;
+use SatTrackr\Cli\Commands\RollbackCommand;
+use Symfony\Component\Console\Application;
+
+final class ConsoleKernel
+{
+    public static function create(DIContainer $container): Application
+    {
+        $app = new Application('sat.trackr.live console', '0.1.0');
+
+        $app->add($container->get(MigrateCommand::class));
+        $app->add($container->get(RollbackCommand::class));
+        $app->add($container->get(MigrateStatusCommand::class));
+        $app->add($container->get(MakeMigrationCommand::class));
+        $app->add($container->get(HealthCommand::class));
+
+        return $app;
+    }
+}
