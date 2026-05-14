@@ -10,6 +10,8 @@ use Monolog\Handler\StreamHandler;
 use Monolog\Level;
 use Monolog\Logger;
 use Psr\Log\LoggerInterface;
+use SatTrackr\Database\Connection;
+use SatTrackr\Database\Migrator;
 use SatTrackr\Http\Controllers\SpaShellController;
 use SatTrackr\Http\Middleware\ErrorHandlerMiddleware;
 use SatTrackr\Services\ViteAssetResolver;
@@ -62,6 +64,21 @@ final class Container
             ErrorHandlerMiddleware::class => static function (DIContainer $c): ErrorHandlerMiddleware {
                 return new ErrorHandlerMiddleware(
                     logger: $c->get(LoggerInterface::class),
+                );
+            },
+
+            Connection::class => static function () use ($rootDir): Connection {
+                $dbPath = EnvLoader::get('DB_PATH', 'data/sat.db') ?? 'data/sat.db';
+                if (!str_starts_with($dbPath, '/') && $dbPath !== ':memory:') {
+                    $dbPath = $rootDir . '/' . $dbPath;
+                }
+                return new Connection($dbPath);
+            },
+
+            Migrator::class => static function (DIContainer $c) use ($rootDir): Migrator {
+                return new Migrator(
+                    connection: $c->get(Connection::class),
+                    migrationsDir: $rootDir . '/migrations',
                 );
             },
         ]);
