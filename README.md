@@ -31,7 +31,7 @@ Part of the **trackr.live family** alongside [trackr.live](https://trackr.live) 
 | Chunk | Status | What it adds |
 |---|---|---|
 | 1. SATCAT ingester + Phase-2 schema | ✅ done | `make ingest-satcat` enriches ~28.8K records (98.5% of catalog) with operator/country/launch_date/launch_site_code/RCS/status/decayed_at in 30s; rebuilds `satellite_purposes` from `group_membership` (12,757 rows). 5 new migrations land the chunks-3-6 tables (`launch_sites`, `launches`, `reentries`, `pass_cache` + a column on `satellites`). 31 new PHPUnit cases, **108 total tests passing**. |
-| 2. Detail panel reads enriched fields | ⏳ pending | Polish pass — surface SATCAT data in the SPA detail panel (operator/country no longer "—"); same for `/text/satellite/{norad}` |
+| 2. Detail panel reads enriched fields | ✅ done | DECAYED satellites filtered out of `/groups/{slug}/tles` (per phase2.md decision 9); `launch_site_code` surfaced in JSON detail + SPA panel + `/text/satellite/{norad}`; "⚠ Reentered" callout when `decayed_at` set; new `Status` column on `/text` catalog list; `make health` reports SATCAT enrichment % (currently 98.5%) and counts all 9 app tables. No new tests (controller polish reuses existing test bed). |
 | 3. Launch Library 2 ingester + launches view | ⏳ pending | `make ingest-ll2`, `/api/v1/launches/*`, `/launches` SPA + `/text/launches` |
 | 4. Space-Track ingester + reentries view | ⏳ pending | `make ingest-spacetrack`, `/api/v1/reentries/*`, `/decays` SPA + `/text/decays` |
 | 5. Observer location handling | ⏳ pending | Geolocation + Nominatim city search + manual lat/lon + localStorage; top-bar `📍` pill |
