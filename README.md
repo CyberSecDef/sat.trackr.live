@@ -17,7 +17,7 @@ Part of the **trackr.live family** alongside [trackr.live](https://trackr.live) 
 | 1. Bootstrap + chrome | ✅ done | Repo skeleton, build tooling, Slim front controller, SPA shell, dark/light/high-contrast themes, Cesium globe with OSM imagery, search input + ⌘K, theme switcher |
 | 1.5. WebGL fallback gate | ⏳ pending | Client-side WebGL detection; `<sat-no-webgl>` notice when absent, with link to text-only catalog |
 | 2. Schema + migrations | ✅ done | `bin/console` (Symfony Console) with `migrate / rollback / migrate:status / make:migration / health`; `satellites`, `satellites_fts` (with sync triggers), `tle_current`, `tle_history`, `satellite_purposes` tables — verified by 7-test PHPUnit feature suite |
-| 3. CelesTrak ingester | ⏳ pending | `make ingest` populates ~30K satellites from CelesTrak's ~33 GP groups |
+| 3. CelesTrak ingester | ✅ done | `make ingest` (or `--group=slug`) populates ~15.6K distinct satellites from CelesTrak's 38 GP groups in ~40s; idempotent re-runs honor CelesTrak's 403 "not modified" politeness signal. TleParser does mod-10 checksum + epoch + element extraction; CelesTrakIngester does upsert-preserving-SATCAT-fields + INSERT OR IGNORE history. 12 new tests, 19 total passing. |
 | 4. API endpoints | ⏳ pending | `/api/v1/satellites*`, `/api/v1/groups/{slug}/tles`, `/api/v1/search`, ETag + CORS middleware |
 | 5. Globe rendering | ⏳ pending | Bulk TLE fetch, satellite.js SGP4 in a Web Worker, Cesium point primitives color-coded by type |
 | 6. Detail panel + search | ⏳ pending | Click-to-select, populated detail panel per req_spec §10, FTS5-backed search results |
@@ -47,24 +47,42 @@ URL shapes already wired:
 ### From the CLI
 
 ```bash
-make migrate           # apply the 5 Phase 1 migrations to data/sat.db
-make migrate-status    # show what's applied vs pending
-make rollback          # reverse the most recent batch
-make health            # PHP version, pdo_sqlite, DB connection, table row counts
-make make-migration NAME=add_foo_to_bar   # scaffold a new migration file
-make test              # 7 migration feature tests + 1 JS smoke test
+# Schema management
+make migrate                         # apply the 5 Phase 1 migrations to data/sat.db
+make migrate-status                  # show what's applied vs pending
+make rollback                        # reverse the most recent batch
+make make-migration NAME=add_foo     # scaffold a new migration file
+
+# Catalog ingest (chunk 3)
+make ingest                          # all 38 CelesTrak groups, ~40s on a fresh DB
+make ingest-group GROUP=stations     # just one group
+make health                          # PHP / pdo_sqlite / DB / per-table row counts
+
+# Quality gates
+make test                            # 19 PHP tests (TleParser, MigrationsTest, CelesTrakIngesterTest) + 1 JS smoke
+make lint / make analyze / make typecheck / make ci
 ```
+
+After `make ingest`, the database holds ~15.6K distinct satellites (deduplicated across overlapping CelesTrak groups), ~15.6K current TLEs, and a history row per (norad_id, epoch) pair — typically 1 per object on the first run, growing by the number of objects with refreshed epochs on each subsequent run.
 
 The schema after `make migrate` matches `docs/phase1.md` § V exactly:
 
 | Table | Purpose | Notes |
 |---|---|---|
-| `satellites` | Catalog row per object | CHECK constraints on `object_type`, `status`, `orbit_class`, `size_class`; 6 indexes |
+| `satellites` | Catalog row per object | CHECK constraints on `object_type`, `status`, `orbit_class`, `size_class`; 6 indexes. CelesTrak ingest only populates `name` + `intl_designator`; SATCAT (chunk 3+, Phase 2) will fill operator/country/mass/etc. |
 | `satellites_fts` | FTS5 virtual table for fuzzy search | Auto-synced via insert/update/delete triggers |
-| `tle_current` | One TLE per active object | FK to satellites, ON DELETE CASCADE |
-| `tle_history` | Append-only TLE archive | Composite PK `(norad_id, epoch)` |
-| `satellite_purposes` | Join table for §5 SET-style purpose | CHECK on canonical 10 values |
+| `tle_current` | One TLE per active object | FK to satellites, ON DELETE CASCADE; mean motion + eccentricity + inclination + RAAN + arg perigee + mean anomaly + BSTAR + rev number, plus derived period / perigee / apogee / semi-major axis |
+| `tle_history` | Append-only TLE archive | Composite PK `(norad_id, epoch)`; INSERT OR IGNORE makes re-ingests cheap |
+| `satellite_purposes` | Join table for §5 SET-style purpose | Empty in Phase 1; populated by SATCAT in Phase 2 |
 | `migrations` | Auto-created by Migrator | Tracks applied filename + batch + timestamp |
+
+### CelesTrak ingest details
+
+- **Format:** we fetch `FORMAT=TLE` (3-line sets). When NORAD IDs cross 6 digits — CelesTrak forecasts ~mid-2026 — the legacy TLE format breaks and we'll need to switch to `FORMAT=JSON` (OMM). Tracked as a Phase 2 migration item.
+- **Group list:** 38 groups configured in `src/Ingest/CelesTrakGroups.php` covering Special-Interest, Weather/Earth-Obs, Communications, Navigation, Scientific, and Miscellaneous. Many objects appear in multiple groups; the upsert-by-norad_id logic dedupes naturally.
+- **Idempotency:** CelesTrak returns HTTP 403 with body "GP data has not updated since…" when you re-fetch a group it considers unchanged. We treat that as a polite skip — group counted but no records processed. INSERT OR IGNORE on `tle_history` ensures re-ingesting the same TLE adds no row.
+- **Cron:** the schedule lands on prod once you wire DreamHost cron to `cd ~/sat.trackr.live && make ingest >> storage/logs/cron.log 2>&1` every 6 hours per `req_spec.md` §23.
+- **SATCAT preservation:** CelesTrak's basic GP feed only carries name + intl designator + orbital elements. The upsert deliberately does **not** touch operator, country, mass, or other satellites-table columns on conflict, so the future SATCAT ingester can populate those without being clobbered.
 
 ---
 
