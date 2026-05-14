@@ -1,8 +1,11 @@
 import * as Cesium from 'cesium';
 import type { ObjectType, TleRecord } from '../api/types';
+import type { Clock } from '../time/Clock';
 import type { LoadedReply, PositionsReply } from '../workers/propagator';
 
 const PROPAGATE_INTERVAL_MS = 250; // ~4 Hz; LEO sats move <800m per tick
+/** A clock-time delta this large bypasses the throttle (e.g. a slider scrub). */
+const BIG_JUMP_MS = 5000;
 
 const COLORS: Record<ObjectType, Cesium.Color> = {
   PAYLOAD:     Cesium.Color.fromCssColorString('#00d9ff'),  // cyan
@@ -39,14 +42,19 @@ export class PointPrimitiveLayer {
   /** norad_id → most recent ECEF position (meters) */
   private positionByNorad = new Map<number, Cesium.Cartesian3>();
   private highlighted: number | null = null;
-  private propagateTimer: number | null = null;
+  private unsubscribeTick: (() => void) | null = null;
+  private lastPropagatedClockMs = 0;
+  private lastPropagateRealMs = 0;
   private destroyed = false;
 
   /** Number of satellites currently rendered. */
   public count = 0;
   public onStatusChange: ((status: string) => void) | null = null;
 
-  constructor(private readonly scene: Cesium.Scene) {
+  constructor(
+    private readonly scene: Cesium.Scene,
+    private readonly clock: Clock,
+  ) {
     this.collection = scene.primitives.add(new Cesium.PointPrimitiveCollection());
     this.worker = new Worker(
       new URL('../workers/propagator.ts', import.meta.url),
@@ -122,16 +130,17 @@ export class PointPrimitiveLayer {
   }
 
   startPropagation(): void {
-    if (this.propagateTimer !== null) return;
+    if (this.unsubscribeTick !== null) return;
     // Kick once immediately so the user doesn't wait a full interval to see motion.
-    this.requestPropagate();
-    this.propagateTimer = window.setInterval(() => this.requestPropagate(), PROPAGATE_INTERVAL_MS);
+    this.requestPropagate(this.clock.getTimeMs());
+    // Subscribe to Cesium's render-loop ticks (~60Hz max). Throttle below.
+    this.unsubscribeTick = this.clock.onTick((timeMs) => this.maybePropagate(timeMs));
   }
 
   stopPropagation(): void {
-    if (this.propagateTimer !== null) {
-      window.clearInterval(this.propagateTimer);
-      this.propagateTimer = null;
+    if (this.unsubscribeTick !== null) {
+      this.unsubscribeTick();
+      this.unsubscribeTick = null;
     }
   }
 
@@ -144,8 +153,26 @@ export class PointPrimitiveLayer {
     }
   }
 
-  private requestPropagate(): void {
-    this.worker.postMessage({ type: 'propagate', timeMs: Date.now() });
+  /**
+   * Called on every Cesium tick (~60Hz). Throttles to PROPAGATE_INTERVAL_MS,
+   * EXCEPT when the clock made a big jump (e.g. user scrubbed the slider) —
+   * then propagate immediately so the visible swarm catches up to the new time.
+   */
+  private maybePropagate(timeMs: number): void {
+    if (this.destroyed) return;
+    const realNow = performance.now();
+    const elapsedReal = realNow - this.lastPropagateRealMs;
+    const clockDelta = Math.abs(timeMs - this.lastPropagatedClockMs);
+    if (elapsedReal < PROPAGATE_INTERVAL_MS && clockDelta < BIG_JUMP_MS) {
+      return;
+    }
+    this.requestPropagate(timeMs);
+  }
+
+  private requestPropagate(timeMs: number): void {
+    this.worker.postMessage({ type: 'propagate', timeMs });
+    this.lastPropagatedClockMs = timeMs;
+    this.lastPropagateRealMs = performance.now();
   }
 
   private onWorkerMessage(data: LoadedReply | PositionsReply): void {

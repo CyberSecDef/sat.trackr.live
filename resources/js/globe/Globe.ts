@@ -3,6 +3,7 @@ import { customElement, property, state } from 'lit/decorators.js';
 import { ref, createRef, type Ref } from 'lit/directives/ref.js';
 import * as Cesium from 'cesium';
 import { getGroupTles, ApiError } from '../api/client';
+import { Clock } from '../time/Clock';
 import { createImageryProvider } from './imagery';
 import { PointPrimitiveLayer } from './PointPrimitiveLayer';
 import { SelectionController } from './SelectionController';
@@ -19,6 +20,7 @@ export class Globe {
   private viewer?: Cesium.Viewer;
   public layer?: PointPrimitiveLayer;
   public selection?: SelectionController;
+  public clock?: Clock;
 
   async init(
     container: HTMLElement,
@@ -26,6 +28,7 @@ export class Globe {
       cesiumIonToken: string;
       onSelect: (norad: number | null) => void;
       onStatus: (status: string) => void;
+      onClockReady?: (clock: Clock) => void;
     },
   ): Promise<void> {
     const provider = await createImageryProvider(opts.cesiumIonToken);
@@ -52,9 +55,11 @@ export class Globe {
     viewer.scene.fog.enabled = true;
     viewer.scene.backgroundColor = Cesium.Color.fromCssColorString('#0a0e27');
 
-    this.layer = new PointPrimitiveLayer(viewer.scene);
+    this.clock = new Clock(viewer.clock);
+    this.layer = new PointPrimitiveLayer(viewer.scene, this.clock);
     this.layer.onStatusChange = opts.onStatus;
     this.selection = new SelectionController(viewer, opts.onSelect);
+    opts.onClockReady?.(this.clock);
 
     opts.onStatus('Loading satellite catalog…');
     try {
