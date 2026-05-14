@@ -35,10 +35,14 @@ final class GroupTlesController
             throw new HttpNotFoundException($request, "Unknown group '{$slug}'");
         }
 
+        // Hide DECAYED objects (per docs/phase2.md decision 9). They have
+        // stale TLEs that propagate to incorrect positions; rendering them
+        // on the globe is misleading. ~thousands of objects per ingest.
         $rows = $this->db->capsule()->table('tle_current as t')
             ->join('group_membership as g', 'g.norad_id', '=', 't.norad_id')
             ->join('satellites as s', 's.norad_id', '=', 't.norad_id')
             ->where('g.group_slug', $slug)
+            ->where('s.status', '!=', 'DECAYED')
             ->orderBy('t.norad_id')
             ->select(
                 't.norad_id',
