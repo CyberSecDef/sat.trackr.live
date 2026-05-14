@@ -15,10 +15,12 @@ use SatTrackr\Cli\Commands\MakeMigrationCommand;
 use SatTrackr\Cli\Commands\MigrateCommand;
 use SatTrackr\Cli\Commands\MigrateStatusCommand;
 use SatTrackr\Cli\Commands\RollbackCommand;
+use GuzzleHttp\Client as GuzzleClient;
 use SatTrackr\Database\Connection;
 use SatTrackr\Database\Migrator;
 use SatTrackr\Http\Controllers\SpaShellController;
 use SatTrackr\Http\Middleware\ErrorHandlerMiddleware;
+use SatTrackr\Services\HttpClientFactory;
 use SatTrackr\Services\ViteAssetResolver;
 
 final class Container
@@ -55,6 +57,9 @@ final class Container
                     devOrigin: EnvLoader::get('VITE_DEV_ORIGIN', 'http://localhost:5173') ?? 'http://localhost:5173',
                 );
             },
+
+            HttpClientFactory::class => static fn (): HttpClientFactory => new HttpClientFactory(),
+            GuzzleClient::class      => static fn (DIContainer $c): GuzzleClient => $c->get(HttpClientFactory::class)->create(),
 
             SpaShellController::class => static function (DIContainer $c) use ($rootDir): SpaShellController {
                 return new SpaShellController(
