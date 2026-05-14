@@ -14,6 +14,7 @@ use Monolog\Logger;
 use Psr\Log\LoggerInterface;
 use SatTrackr\Cli\Commands\HealthCommand;
 use SatTrackr\Cli\Commands\IngestCelesTrakCommand;
+use SatTrackr\Cli\Commands\IngestSatCatCommand;
 use SatTrackr\Cli\Commands\MakeMigrationCommand;
 use SatTrackr\Cli\Commands\MigrateCommand;
 use SatTrackr\Cli\Commands\MigrateStatusCommand;
@@ -36,6 +37,8 @@ use SatTrackr\Http\Middleware\JsonResponseMiddleware;
 use SatTrackr\Services\FreshnessClassifier;
 use SatTrackr\Ingest\CelesTrakClient;
 use SatTrackr\Ingest\CelesTrakIngester;
+use SatTrackr\Ingest\SatCatClient;
+use SatTrackr\Ingest\SatCatIngester;
 use SatTrackr\Ingest\TleParser;
 use SatTrackr\Http\Controllers\Text\TextCatalogController;
 use SatTrackr\Http\Controllers\Text\TextGroupController;
@@ -170,6 +173,12 @@ final class Container
                 db:     $c->get(Connection::class),
                 logger: $c->get(LoggerInterface::class),
             ),
+            SatCatClient::class    => static fn (DIContainer $c) => new SatCatClient($c->get(GuzzleClient::class)),
+            SatCatIngester::class  => static fn (DIContainer $c) => new SatCatIngester(
+                client: $c->get(SatCatClient::class),
+                db:     $c->get(Connection::class),
+                logger: $c->get(LoggerInterface::class),
+            ),
 
             // CLI commands
             MigrateCommand::class         => static fn (DIContainer $c) => new MigrateCommand($c->get(Migrator::class)),
@@ -178,6 +187,10 @@ final class Container
             MakeMigrationCommand::class   => static fn () => new MakeMigrationCommand($rootDir . '/migrations'),
             IngestCelesTrakCommand::class => static fn (DIContainer $c) => new IngestCelesTrakCommand(
                 $c->get(CelesTrakIngester::class),
+                $c->get(Connection::class),
+            ),
+            IngestSatCatCommand::class => static fn (DIContainer $c) => new IngestSatCatCommand(
+                $c->get(SatCatIngester::class),
                 $c->get(Connection::class),
             ),
             HealthCommand::class          => static fn (DIContainer $c) => new HealthCommand(

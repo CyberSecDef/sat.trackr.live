@@ -105,13 +105,22 @@ make-migration: ## Generate a new migration skeleton (NAME=add_foo)
 # -----------------------------------------------------------------------------
 
 .PHONY: ingest
-ingest: ## Run CelesTrak ingester for all configured groups
+ingest: ## Run CelesTrak GP ingester for all configured groups (TLE data)
 	php bin/console ingest:celestrak
 
 .PHONY: ingest-group
 ingest-group: ## Ingest a single CelesTrak group (GROUP=starlink)
 	@if [ -z "$(GROUP)" ]; then echo "Usage: make ingest-group GROUP=starlink"; exit 1; fi
 	php bin/console ingest:celestrak --group=$(GROUP)
+
+.PHONY: ingest-satcat
+ingest-satcat: ## Run CelesTrak SATCAT ingester (operator/country/launch_date/RCS/status enrichment)
+	php bin/console ingest:satcat
+
+.PHONY: ingest-satcat-group
+ingest-satcat-group: ## Ingest a single SATCAT group (GROUP=starlink)
+	@if [ -z "$(GROUP)" ]; then echo "Usage: make ingest-satcat-group GROUP=starlink"; exit 1; fi
+	php bin/console ingest:satcat --group=$(GROUP)
 
 .PHONY: health
 health: ## Run the health CLI command (DB ping, row counts, last ingest)
