@@ -15,12 +15,14 @@ Part of the **trackr.live family** alongside [trackr.live](https://trackr.live) 
 | Chunk | Status | What it adds |
 |---|---|---|
 | 1. Bootstrap + chrome | ✅ done | Repo skeleton, build tooling, Slim front controller, SPA shell, dark/light/high-contrast themes, Cesium globe with OSM imagery, search input + ⌘K, theme switcher |
-| 2. Schema + migrations | ⏳ pending | `illuminate/console` migration runner; `satellites`, `satellites_fts`, `tle_current`, `tle_history`, `satellite_purposes` tables |
+| 1.5. WebGL fallback gate | ⏳ pending | Client-side WebGL detection; `<sat-no-webgl>` notice when absent, with link to text-only catalog |
+| 2. Schema + migrations | ✅ done | `bin/console` (Symfony Console) with `migrate / rollback / migrate:status / make:migration / health`; `satellites`, `satellites_fts` (with sync triggers), `tle_current`, `tle_history`, `satellite_purposes` tables — verified by 7-test PHPUnit feature suite |
 | 3. CelesTrak ingester | ⏳ pending | `make ingest` populates ~30K satellites from CelesTrak's ~33 GP groups |
 | 4. API endpoints | ⏳ pending | `/api/v1/satellites*`, `/api/v1/groups/{slug}/tles`, `/api/v1/search`, ETag + CORS middleware |
 | 5. Globe rendering | ⏳ pending | Bulk TLE fetch, satellite.js SGP4 in a Web Worker, Cesium point primitives color-coded by type |
 | 6. Detail panel + search | ⏳ pending | Click-to-select, populated detail panel per req_spec §10, FTS5-backed search results |
 | 7. Time scrubbing | ⏳ pending | ±7d timeline with yellow band beyond ±48h, play/pause, speed controls |
+| 8. Text-only catalog at /text | ⏳ pending | Server-rendered fallback for browsers without WebGL or with JS disabled (depends on chunk 4 API) |
 
 See [`docs/phase1.md`](docs/phase1.md) for the full phase design and [`req_spec.md`](req_spec.md) for the long-form vision (sections §1–§30).
 
@@ -28,7 +30,9 @@ See [`docs/phase1.md`](docs/phase1.md) for the full phase design and [`req_spec.
 
 ## What's testable today
 
-Open `http://localhost:8000` (or the LAN URL if reviewing from another device). You should see:
+### In the browser
+
+Open `http://localhost:8000` (or the LAN URL printed by `make`). You should see:
 
 - **Top bar**: `⊕ sat.trackr.live` wordmark, `Space situational awareness, _legible_` tagline, `§ catalog · § launches · § events` nav (launches/events are dim placeholders), search input with `⌘K` shortcut hint, theme switcher button.
 - **Cesium globe**: full-viewport 3D Earth using OpenStreetMap imagery (no Cesium ion token needed yet). Lighting from sun, atmosphere, fog enabled. Drag to rotate, pinch/scroll to zoom.
@@ -39,6 +43,28 @@ Open `http://localhost:8000` (or the LAN URL if reviewing from another device). 
 URL shapes already wired:
 - `/` → SPA shell
 - `/satellite/{norad}` → SPA shell with the NORAD ID surfaced as a property on `<sat-app>` (no detail panel yet to render it; chunk 6)
+
+### From the CLI
+
+```bash
+make migrate           # apply the 5 Phase 1 migrations to data/sat.db
+make migrate-status    # show what's applied vs pending
+make rollback          # reverse the most recent batch
+make health            # PHP version, pdo_sqlite, DB connection, table row counts
+make make-migration NAME=add_foo_to_bar   # scaffold a new migration file
+make test              # 7 migration feature tests + 1 JS smoke test
+```
+
+The schema after `make migrate` matches `docs/phase1.md` § V exactly:
+
+| Table | Purpose | Notes |
+|---|---|---|
+| `satellites` | Catalog row per object | CHECK constraints on `object_type`, `status`, `orbit_class`, `size_class`; 6 indexes |
+| `satellites_fts` | FTS5 virtual table for fuzzy search | Auto-synced via insert/update/delete triggers |
+| `tle_current` | One TLE per active object | FK to satellites, ON DELETE CASCADE |
+| `tle_history` | Append-only TLE archive | Composite PK `(norad_id, epoch)` |
+| `satellite_purposes` | Join table for §5 SET-style purpose | CHECK on canonical 10 values |
+| `migrations` | Auto-created by Migrator | Tracks applied filename + batch + timestamp |
 
 ---
 
