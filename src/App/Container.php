@@ -6,20 +6,25 @@ namespace SatTrackr\App;
 
 use DI\Container as DIContainer;
 use DI\ContainerBuilder;
+use GuzzleHttp\Client as GuzzleClient;
+use GuzzleHttp\ClientInterface as GuzzleClientInterface;
 use Monolog\Handler\StreamHandler;
 use Monolog\Level;
 use Monolog\Logger;
 use Psr\Log\LoggerInterface;
 use SatTrackr\Cli\Commands\HealthCommand;
+use SatTrackr\Cli\Commands\IngestCelesTrakCommand;
 use SatTrackr\Cli\Commands\MakeMigrationCommand;
 use SatTrackr\Cli\Commands\MigrateCommand;
 use SatTrackr\Cli\Commands\MigrateStatusCommand;
 use SatTrackr\Cli\Commands\RollbackCommand;
-use GuzzleHttp\Client as GuzzleClient;
 use SatTrackr\Database\Connection;
 use SatTrackr\Database\Migrator;
 use SatTrackr\Http\Controllers\SpaShellController;
 use SatTrackr\Http\Middleware\ErrorHandlerMiddleware;
+use SatTrackr\Ingest\CelesTrakClient;
+use SatTrackr\Ingest\CelesTrakIngester;
+use SatTrackr\Ingest\TleParser;
 use SatTrackr\Services\HttpClientFactory;
 use SatTrackr\Services\ViteAssetResolver;
 
@@ -58,8 +63,9 @@ final class Container
                 );
             },
 
-            HttpClientFactory::class => static fn (): HttpClientFactory => new HttpClientFactory(),
-            GuzzleClient::class      => static fn (DIContainer $c): GuzzleClient => $c->get(HttpClientFactory::class)->create(),
+            HttpClientFactory::class    => static fn (): HttpClientFactory => new HttpClientFactory(),
+            GuzzleClient::class         => static fn (DIContainer $c): GuzzleClient => $c->get(HttpClientFactory::class)->create(),
+            GuzzleClientInterface::class => static fn (DIContainer $c): GuzzleClient => $c->get(GuzzleClient::class),
 
             SpaShellController::class => static function (DIContainer $c) use ($rootDir): SpaShellController {
                 return new SpaShellController(
@@ -92,12 +98,23 @@ final class Container
                 );
             },
 
+            // Ingest
+            TleParser::class       => static fn () => new TleParser(),
+            CelesTrakClient::class => static fn (DIContainer $c) => new CelesTrakClient($c->get(GuzzleClient::class)),
+            CelesTrakIngester::class => static fn (DIContainer $c) => new CelesTrakIngester(
+                client: $c->get(CelesTrakClient::class),
+                parser: $c->get(TleParser::class),
+                db:     $c->get(Connection::class),
+                logger: $c->get(LoggerInterface::class),
+            ),
+
             // CLI commands
-            MigrateCommand::class       => static fn (DIContainer $c) => new MigrateCommand($c->get(Migrator::class)),
-            RollbackCommand::class      => static fn (DIContainer $c) => new RollbackCommand($c->get(Migrator::class)),
-            MigrateStatusCommand::class => static fn (DIContainer $c) => new MigrateStatusCommand($c->get(Migrator::class)),
-            MakeMigrationCommand::class => static fn () => new MakeMigrationCommand($rootDir . '/migrations'),
-            HealthCommand::class        => static fn (DIContainer $c) => new HealthCommand(
+            MigrateCommand::class         => static fn (DIContainer $c) => new MigrateCommand($c->get(Migrator::class)),
+            RollbackCommand::class        => static fn (DIContainer $c) => new RollbackCommand($c->get(Migrator::class)),
+            MigrateStatusCommand::class   => static fn (DIContainer $c) => new MigrateStatusCommand($c->get(Migrator::class)),
+            MakeMigrationCommand::class   => static fn () => new MakeMigrationCommand($rootDir . '/migrations'),
+            IngestCelesTrakCommand::class => static fn (DIContainer $c) => new IngestCelesTrakCommand($c->get(CelesTrakIngester::class)),
+            HealthCommand::class          => static fn (DIContainer $c) => new HealthCommand(
                 $c->get(Connection::class),
                 $c->get(Migrator::class),
             ),

@@ -12,8 +12,7 @@ final class IngestReport
 {
     public int $groupsProcessed = 0;
     public int $satellitesUpserted = 0;
-    public int $tleCurrentInserted = 0;
-    public int $tleCurrentUpdated = 0;
+    public int $tleCurrentUpserted = 0;
     public int $tleHistoryAdded = 0;
     public int $tleRejected = 0;
 
@@ -59,14 +58,13 @@ final class IngestReport
     public function toLogContext(): array
     {
         return [
-            'groups_processed'      => $this->groupsProcessed,
-            'satellites_upserted'   => $this->satellitesUpserted,
-            'tle_current_inserted'  => $this->tleCurrentInserted,
-            'tle_current_updated'   => $this->tleCurrentUpdated,
-            'tle_history_added'     => $this->tleHistoryAdded,
-            'tle_rejected'          => $this->tleRejected,
-            'errors'                => count($this->errors),
-            'duration_seconds'      => round($this->durationSeconds(), 2),
+            'groups_processed'    => $this->groupsProcessed,
+            'satellites_upserted' => $this->satellitesUpserted,
+            'tle_current_upserted'=> $this->tleCurrentUpserted,
+            'tle_history_added'   => $this->tleHistoryAdded,
+            'tle_rejected'        => $this->tleRejected,
+            'errors'              => count($this->errors),
+            'duration_seconds'    => round($this->durationSeconds(), 2),
         ];
     }
 }
