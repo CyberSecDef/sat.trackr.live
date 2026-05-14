@@ -1,0 +1,38 @@
+{
+  "name": "sat-trackr-live",
+  "version": "0.0.0",
+  "private": true,
+  "license": "AGPL-3.0-or-later",
+  "description": "A public, read-only, mobile-friendly 3D web app visualizing everything in Earth orbit.",
+  "homepage": "https://sat.trackr.live",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/CyberSecDef/sat.trackr.live.git"
+  },
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "lint": "eslint resources/js tests/Js --max-warnings=0",
+    "lint:fix": "eslint resources/js tests/Js --fix",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "cesium": "^1.121.0",
+    "lit": "^3.2.0",
+    "satellite.js": "^5.0.0"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.13.0",
+    "eslint": "^9.13.0",
+    "globals": "^15.11.0",
+    "prettier": "^3.3.0",
+    "typescript": "^5.6.0",
+    "typescript-eslint": "^8.13.0",
+    "vite": "^5.4.0",
+    "vite-plugin-cesium": "^1.2.22",
+    "vitest": "^2.1.0"
+  }
+}
