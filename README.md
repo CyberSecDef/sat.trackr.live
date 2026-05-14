@@ -55,6 +55,21 @@ curl 'http://localhost:8000/api/v1/autocomplete?q=star'      # typeahead
 
 Every response carries an `ETag`; pass it back via `If-None-Match` to get a 304 Not Modified. CORS is fully open (`Access-Control-Allow-Origin: *`) and OPTIONS preflight returns 204 in <5ms.
 
+### From any browser — text-only catalog at `/text` (no JS / no WebGL required)
+
+For environments without WebGL (older browsers, restricted IT, GPU disabled, headless tools, or JS fully off), the same data is browseable as plain HTML:
+
+```
+http://localhost:8000/text                      # paginated catalog with filter form
+http://localhost:8000/text?q=ISS&type=PAYLOAD   # filtered (FTS5 q + type/country/status/orbit)
+http://localhost:8000/text/satellite/25544      # full §10 detail page for ISS
+http://localhost:8000/text/groups               # all 38 CelesTrak groups + counts
+http://localhost:8000/text/groups/stations      # group members
+http://localhost:8000/text/search?q=hubble      # search form + results
+```
+
+Self-contained — inline dark-theme CSS in the layout, no external assets, sitemap-friendly. The SPA's `<sat-no-webgl>` notice (auto-shown when `hasWebGL()` returns false) links here as the primary CTA.
+
 ### In the browser
 
 Open `http://localhost:8000` (or the LAN URL printed by `make`). You should see:
