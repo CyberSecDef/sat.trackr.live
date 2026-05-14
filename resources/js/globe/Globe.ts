@@ -1,20 +1,36 @@
 import { LitElement, html, css } from 'lit';
-import { customElement, property } from 'lit/decorators.js';
+import { customElement, property, state } from 'lit/decorators.js';
 import { ref, createRef, type Ref } from 'lit/directives/ref.js';
 import * as Cesium from 'cesium';
+import { getGroupTles, ApiError } from '../api/client';
 import { createImageryProvider } from './imagery';
+import { PointPrimitiveLayer } from './PointPrimitiveLayer';
+import { SelectionController } from './SelectionController';
+
+/** The CelesTrak group we render at chunk 5; chunk 6+ may parameterize this. */
+const DEFAULT_GROUP = 'active';
 
 /**
- * Plain class wrapping Cesium.Viewer. Lit-element-agnostic so the imperative
- * Cesium API isn't fighting Lit's reactive render cycle.
+ * Plain class wrapping Cesium.Viewer + the satellite-rendering pipeline.
+ * Lit-element-agnostic — the imperative Cesium API doesn't benefit from
+ * Lit's reactive render cycle.
  */
 class Globe {
   private viewer?: Cesium.Viewer;
+  public layer?: PointPrimitiveLayer;
+  public selection?: SelectionController;
 
-  async init(container: HTMLElement, opts: { cesiumIonToken: string }): Promise<void> {
+  async init(
+    container: HTMLElement,
+    opts: {
+      cesiumIonToken: string;
+      onSelect: (norad: number | null) => void;
+      onStatus: (status: string) => void;
+    },
+  ): Promise<void> {
     const provider = await createImageryProvider(opts.cesiumIonToken);
 
-    this.viewer = new Cesium.Viewer(container, {
+    const viewer = new Cesium.Viewer(container, {
       animation: false,
       baseLayerPicker: false,
       fullscreenButton: false,
@@ -27,16 +43,39 @@ class Globe {
       infoBox: false,
       baseLayer: new Cesium.ImageryLayer(provider, {}),
     });
+    this.viewer = viewer;
 
-    this.viewer.scene.globe.enableLighting = true;
-    this.viewer.scene.skyAtmosphere.show = true;
-    this.viewer.scene.fog.enabled = true;
-    this.viewer.scene.backgroundColor = Cesium.Color.fromCssColorString('#0a0e27');
+    viewer.scene.globe.enableLighting = true;
+    if (viewer.scene.skyAtmosphere) {
+      viewer.scene.skyAtmosphere.show = true;
+    }
+    viewer.scene.fog.enabled = true;
+    viewer.scene.backgroundColor = Cesium.Color.fromCssColorString('#0a0e27');
+
+    this.layer = new PointPrimitiveLayer(viewer.scene);
+    this.layer.onStatusChange = opts.onStatus;
+    this.selection = new SelectionController(viewer, opts.onSelect);
+
+    opts.onStatus('Loading satellite catalog…');
+    try {
+      const bundle = await getGroupTles(DEFAULT_GROUP);
+      opts.onStatus(`Parsing ${bundle.count.toLocaleString()} TLEs…`);
+      this.layer.load(bundle.tles);
+      this.layer.startPropagation();
+    } catch (err) {
+      const msg = err instanceof ApiError ? `API error ${err.status}` : String(err);
+      opts.onStatus(`Failed to load satellites: ${msg}`);
+      console.error('Globe failed to load satellites:', err);
+    }
   }
 
   destroy(): void {
+    this.selection?.destroy();
+    this.layer?.destroy();
     this.viewer?.destroy();
     this.viewer = undefined;
+    this.layer = undefined;
+    this.selection = undefined;
   }
 }
 
@@ -44,6 +83,9 @@ class Globe {
 export class SatGlobe extends LitElement {
   @property({ type: String, attribute: 'cesium-ion-token' })
   cesiumIonToken = '';
+
+  @state() private status = 'Initializing globe…';
+  @state() private loaded = false;
 
   private globe = new Globe();
   private containerRef: Ref<HTMLDivElement> = createRef();
@@ -72,7 +114,25 @@ export class SatGlobe extends LitElement {
     .credit a {
       color: var(--color-text-muted);
     }
-    /* Hide Cesium's own credit container — we render our own above */
+    .status {
+      position: absolute;
+      bottom: 0.4rem;
+      left: 0.6rem;
+      padding: 0.25rem 0.6rem;
+      background: var(--color-bg-overlay);
+      border: 1px solid var(--color-border);
+      border-radius: 4px;
+      color: var(--color-text-muted);
+      font-family: var(--font-mono);
+      font-size: 0.75rem;
+      pointer-events: none;
+      z-index: 1;
+      transition: opacity 0.4s ease;
+    }
+    .status.faded {
+      opacity: 0.5;
+    }
+    /* Hide Cesium's built-in credit container — we render our own. */
     .container :global(.cesium-widget-credits) {
       display: none !important;
     }
@@ -80,13 +140,20 @@ export class SatGlobe extends LitElement {
 
   async firstUpdated(): Promise<void> {
     const container = this.containerRef.value;
-    if (container) {
-      try {
-        await this.globe.init(container, { cesiumIonToken: this.cesiumIonToken });
-      } catch (err) {
-        console.error('Failed to initialize Cesium globe:', err);
-      }
-    }
+    if (!container) return;
+
+    await this.globe.init(container, {
+      cesiumIonToken: this.cesiumIonToken,
+      onSelect: (norad) => this.dispatchSelect(norad),
+      onStatus: (s) => {
+        this.status = s;
+        if (s.startsWith('Tracking')) {
+          this.loaded = true;
+          // Fade the status pill once tracking starts.
+          window.setTimeout(() => this.requestUpdate(), 3000);
+        }
+      },
+    });
   }
 
   disconnectedCallback(): void {
@@ -94,9 +161,20 @@ export class SatGlobe extends LitElement {
     this.globe.destroy();
   }
 
+  private dispatchSelect(norad: number | null): void {
+    this.dispatchEvent(
+      new CustomEvent<{ norad: number | null }>('select', {
+        detail: { norad },
+        bubbles: true,
+        composed: true,
+      }),
+    );
+  }
+
   render() {
     return html`
       <div class="container" ${ref(this.containerRef)}></div>
+      <div class="status ${this.loaded ? 'faded' : ''}">${this.status}</div>
       <div class="credit">
         ${this.cesiumIonToken
           ? html`<a href="https://cesium.com" target="_blank" rel="noopener">Cesium ion</a>`

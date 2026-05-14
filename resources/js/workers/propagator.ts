@@ -86,11 +86,14 @@ function handlePropagate(timeMs: number): void {
   for (let i = 0; i < records.length; i++) {
     const { norad, satrec } = records[i];
     const result = satellite.propagate(satrec, date);
-    const pos = result.position;
-    if (typeof pos !== 'object' || pos === false || pos === null) {
-      continue; // SGP4 failed for this satellite at this time
+    const pos = result.position as unknown;
+    // satellite.js's static type only describes the success path, but at
+    // runtime SGP4 can return false / null for failed propagations. Use a
+    // shape-check rather than trusting the static type.
+    if (pos === null || typeof pos !== 'object' || !('x' in (pos as object))) {
+      continue;
     }
-    const ecf = satellite.eciToEcf(pos, gmst);
+    const ecf = satellite.eciToEcf(pos as satellite.EciVec3<number>, gmst);
     if (!Number.isFinite(ecf.x) || !Number.isFinite(ecf.y) || !Number.isFinite(ecf.z)) {
       continue;
     }
