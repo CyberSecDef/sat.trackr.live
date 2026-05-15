@@ -15,6 +15,7 @@ use Psr\Log\LoggerInterface;
 use SatTrackr\Cli\Commands\HealthCommand;
 use SatTrackr\Cli\Commands\IngestCelesTrakCommand;
 use SatTrackr\Cli\Commands\IngestLaunchLibraryCommand;
+use SatTrackr\Cli\Commands\IngestSpaceTrackCommand;
 use SatTrackr\Cli\Commands\IngestSatCatCommand;
 use SatTrackr\Cli\Commands\MakeMigrationCommand;
 use SatTrackr\Cli\Commands\MigrateCommand;
@@ -45,6 +46,7 @@ use SatTrackr\Ingest\CelesTrakIngester;
 use SatTrackr\Ingest\LaunchLibraryClient;
 use SatTrackr\Ingest\LaunchLibraryIngester;
 use SatTrackr\Ingest\SpaceTrackClient;
+use SatTrackr\Ingest\SpaceTrackIngester;
 use SatTrackr\Ingest\SatCatClient;
 use SatTrackr\Ingest\SatCatIngester;
 use SatTrackr\Ingest\TleParser;
@@ -209,6 +211,11 @@ final class Container
                 EnvLoader::get('SPACE_TRACK_USER', '') ?? '',
                 EnvLoader::get('SPACE_TRACK_PASS', '') ?? '',
             ),
+            SpaceTrackIngester::class => static fn (DIContainer $c) => new SpaceTrackIngester(
+                client: $c->get(SpaceTrackClient::class),
+                db:     $c->get(Connection::class),
+                logger: $c->get(LoggerInterface::class),
+            ),
 
             // CLI commands
             MigrateCommand::class         => static fn (DIContainer $c) => new MigrateCommand($c->get(Migrator::class)),
@@ -225,6 +232,10 @@ final class Container
             ),
             IngestLaunchLibraryCommand::class => static fn (DIContainer $c) => new IngestLaunchLibraryCommand(
                 $c->get(LaunchLibraryIngester::class),
+                $c->get(Connection::class),
+            ),
+            IngestSpaceTrackCommand::class => static fn (DIContainer $c) => new IngestSpaceTrackCommand(
+                $c->get(SpaceTrackIngester::class),
                 $c->get(Connection::class),
             ),
             HealthCommand::class          => static fn (DIContainer $c) => new HealthCommand(

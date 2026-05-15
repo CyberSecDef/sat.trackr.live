@@ -126,6 +126,10 @@ ingest-satcat-group: ## Ingest a single SATCAT group (GROUP=starlink)
 ingest-ll2: ## Run Launch Library 2 ingester (MODE=upcoming|previous|both, default both)
 	php bin/console ingest:ll2 --mode=$(or $(MODE),both)
 
+.PHONY: ingest-spacetrack
+ingest-spacetrack: ## Run Space-Track TIP ingester for predicted reentries (LIMIT=N, default 100)
+	php bin/console ingest:spacetrack --limit=$(or $(LIMIT),100)
+
 .PHONY: health
 health: ## Run the health CLI command (DB ping, row counts, last ingest)
 	php bin/console health
