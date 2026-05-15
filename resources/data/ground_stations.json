@@ -1,0 +1,50 @@
+[
+  {"id": "nen-wallops",        "name": "Wallops Flight Facility",      "network": "NEN",     "operator": "NASA",            "country": "US",  "latitude_deg":  37.9402, "longitude_deg":  -75.4664, "altitude_m":   13},
+  {"id": "nen-white-sands",    "name": "White Sands Complex",          "network": "NEN",     "operator": "NASA",            "country": "US",  "latitude_deg":  32.5034, "longitude_deg": -106.6092, "altitude_m": 1432},
+  {"id": "nen-ksc",            "name": "Kennedy Space Center",         "network": "NEN",     "operator": "NASA",            "country": "US",  "latitude_deg":  28.5234, "longitude_deg":  -80.6824, "altitude_m":    3},
+  {"id": "nen-asf",            "name": "Alaska Satellite Facility",    "network": "NEN",     "operator": "NASA / UAF",      "country": "US",  "latitude_deg":  64.8587, "longitude_deg": -147.8492, "altitude_m":  213},
+  {"id": "nen-svalbard",       "name": "Svalbard (SvalSat)",           "network": "NEN",     "operator": "NASA / KSAT",     "country": "NO",  "latitude_deg":  78.2310, "longitude_deg":   15.4069, "altitude_m":  450},
+  {"id": "nen-mcmurdo",        "name": "McMurdo Ground Station",       "network": "NEN",     "operator": "NASA",            "country": "AQ",  "latitude_deg": -77.8480, "longitude_deg":  166.6678, "altitude_m":   34},
+
+  {"id": "dsn-goldstone",      "name": "Goldstone (DSN)",              "network": "DSN",     "operator": "NASA / JPL",      "country": "US",  "latitude_deg":  35.4267, "longitude_deg": -116.8900, "altitude_m":  951},
+  {"id": "dsn-madrid",         "name": "Madrid (DSN)",                 "network": "DSN",     "operator": "NASA / INTA",     "country": "ES",  "latitude_deg":  40.4314, "longitude_deg":   -4.2481, "altitude_m":  834},
+  {"id": "dsn-canberra",       "name": "Canberra (DSN)",               "network": "DSN",     "operator": "NASA / CSIRO",    "country": "AU",  "latitude_deg": -35.4014, "longitude_deg":  148.9817, "altitude_m":  688},
+
+  {"id": "estrack-cebreros",   "name": "Cebreros",                     "network": "ESTRACK", "operator": "ESA",             "country": "ES",  "latitude_deg":  40.4527, "longitude_deg":   -4.3676, "altitude_m":  794},
+  {"id": "estrack-kiruna",     "name": "Kiruna",                       "network": "ESTRACK", "operator": "ESA",             "country": "SE",  "latitude_deg":  67.8576, "longitude_deg":   20.9683, "altitude_m":  391},
+  {"id": "estrack-kourou",     "name": "Kourou",                       "network": "ESTRACK", "operator": "ESA",             "country": "GF",  "latitude_deg":   5.2510, "longitude_deg":  -52.8049, "altitude_m":   17},
+  {"id": "estrack-maspalomas", "name": "Maspalomas",                   "network": "ESTRACK", "operator": "ESA / INTA",      "country": "ES",  "latitude_deg":  27.7626, "longitude_deg":  -15.6338, "altitude_m":  205},
+  {"id": "estrack-malargue",   "name": "Malargüe",                     "network": "ESTRACK", "operator": "ESA",             "country": "AR",  "latitude_deg": -35.7757, "longitude_deg":  -69.3982, "altitude_m": 1551},
+  {"id": "estrack-perth",      "name": "Perth (New Norcia)",           "network": "ESTRACK", "operator": "ESA",             "country": "AU",  "latitude_deg": -31.0482, "longitude_deg":  116.1915, "altitude_m":  252},
+  {"id": "estrack-redu",       "name": "Redu",                         "network": "ESTRACK", "operator": "ESA",             "country": "BE",  "latitude_deg":  50.0021, "longitude_deg":    5.1453, "altitude_m":  386},
+  {"id": "estrack-villafranca","name": "Villafranca (ESAC)",           "network": "ESTRACK", "operator": "ESA",             "country": "ES",  "latitude_deg":  40.4438, "longitude_deg":   -3.9525, "altitude_m":  664},
+  {"id": "estrack-santa-maria","name": "Santa Maria",                  "network": "ESTRACK", "operator": "ESA",             "country": "PT",  "latitude_deg":  36.9978, "longitude_deg":  -25.1359, "altitude_m":  276},
+
+  {"id": "jaxa-usuda",         "name": "Usuda Deep Space Center",      "network": "JAXA",    "operator": "JAXA",            "country": "JP",  "latitude_deg":  36.1331, "longitude_deg":  138.3622, "altitude_m": 1456},
+  {"id": "jaxa-uchinoura",     "name": "Uchinoura Space Center",       "network": "JAXA",    "operator": "JAXA",            "country": "JP",  "latitude_deg":  31.2510, "longitude_deg":  131.0826, "altitude_m":  228},
+  {"id": "jaxa-tanegashima",   "name": "Tanegashima Space Center",     "network": "JAXA",    "operator": "JAXA",            "country": "JP",  "latitude_deg":  30.4011, "longitude_deg":  130.9667, "altitude_m":   29},
+  {"id": "jaxa-katsuura",      "name": "Katsuura Tracking Station",    "network": "JAXA",    "operator": "JAXA",            "country": "JP",  "latitude_deg":  35.2042, "longitude_deg":  140.3097, "altitude_m":   44},
+
+  {"id": "isro-bangalore",     "name": "ISTRAC Bangalore",             "network": "ISRO",    "operator": "ISRO",            "country": "IN",  "latitude_deg":  12.9716, "longitude_deg":   77.5946, "altitude_m":  920},
+  {"id": "isro-bhopal",        "name": "ISTRAC Bhopal",                "network": "ISRO",    "operator": "ISRO",            "country": "IN",  "latitude_deg":  23.2599, "longitude_deg":   77.4126, "altitude_m":  527},
+  {"id": "isro-lucknow",       "name": "ISTRAC Lucknow",               "network": "ISRO",    "operator": "ISRO",            "country": "IN",  "latitude_deg":  26.8467, "longitude_deg":   80.9462, "altitude_m":  123},
+  {"id": "isro-port-blair",    "name": "ISTRAC Port Blair",            "network": "ISRO",    "operator": "ISRO",            "country": "IN",  "latitude_deg":  11.6234, "longitude_deg":   92.7265, "altitude_m":   79},
+  {"id": "isro-sriharikota",   "name": "Satish Dhawan Space Centre",   "network": "ISRO",    "operator": "ISRO",            "country": "IN",  "latitude_deg":  13.7330, "longitude_deg":   80.2350, "altitude_m":   12},
+
+  {"id": "ksat-svalbard",      "name": "Svalbard (KSAT)",              "network": "KSAT",    "operator": "KSAT",            "country": "NO",  "latitude_deg":  78.2310, "longitude_deg":   15.4069, "altitude_m":  450},
+  {"id": "ksat-tromso",        "name": "Tromsø",                       "network": "KSAT",    "operator": "KSAT",            "country": "NO",  "latitude_deg":  69.6628, "longitude_deg":   18.9389, "altitude_m":  100},
+  {"id": "ksat-inuvik",        "name": "Inuvik",                       "network": "KSAT",    "operator": "KSAT / NRCan",    "country": "CA",  "latitude_deg":  68.3596, "longitude_deg": -133.7184, "altitude_m":   68},
+  {"id": "ksat-punta-arenas",  "name": "Punta Arenas",                 "network": "KSAT",    "operator": "KSAT",            "country": "CL",  "latitude_deg": -52.9436, "longitude_deg":  -70.8516, "altitude_m":   36},
+  {"id": "ksat-mauritius",     "name": "Mauritius",                    "network": "KSAT",    "operator": "KSAT",            "country": "MU",  "latitude_deg": -20.5068, "longitude_deg":   57.5519, "altitude_m":  434},
+  {"id": "ksat-awarua",        "name": "Awarua (Invercargill)",        "network": "KSAT",    "operator": "KSAT",            "country": "NZ",  "latitude_deg": -46.5286, "longitude_deg":  168.3792, "altitude_m":   12},
+  {"id": "ksat-singapore",     "name": "Singapore",                    "network": "KSAT",    "operator": "KSAT",            "country": "SG",  "latitude_deg":   1.3140, "longitude_deg":  103.7717, "altitude_m":   17},
+  {"id": "ksat-dubai",         "name": "Dubai",                        "network": "KSAT",    "operator": "KSAT",            "country": "AE",  "latitude_deg":  25.2048, "longitude_deg":   55.2708, "altitude_m":    5},
+
+  {"id": "aws-hawaii",         "name": "Hawaii (AWS GS)",              "network": "AWS",     "operator": "AWS Ground Station","country": "US","latitude_deg":  19.8400, "longitude_deg": -155.5060, "altitude_m":   20},
+  {"id": "aws-ohio",           "name": "Ohio (AWS GS)",                "network": "AWS",     "operator": "AWS Ground Station","country": "US","latitude_deg":  39.9612, "longitude_deg":  -82.9988, "altitude_m":  236},
+  {"id": "aws-stockholm",      "name": "Stockholm (AWS GS)",           "network": "AWS",     "operator": "AWS Ground Station","country": "SE","latitude_deg":  59.3293, "longitude_deg":   18.0686, "altitude_m":   28},
+  {"id": "aws-bahrain",        "name": "Bahrain (AWS GS)",             "network": "AWS",     "operator": "AWS Ground Station","country": "BH","latitude_deg":  26.0667, "longitude_deg":   50.5577, "altitude_m":   17},
+  {"id": "aws-cape-town",      "name": "Cape Town (AWS GS)",           "network": "AWS",     "operator": "AWS Ground Station","country": "ZA","latitude_deg": -33.9249, "longitude_deg":   18.4241, "altitude_m":   25},
+
+  {"id": "atlas-vail",         "name": "Vail (ATLAS)",                 "network": "ATLAS",   "operator": "ATLAS Space Operations", "country": "US", "latitude_deg":  39.6403, "longitude_deg": -106.3742, "altitude_m": 2476}
+]
