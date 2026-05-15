@@ -10,7 +10,7 @@ Part of the **trackr.live family** alongside [trackr.live](https://trackr.live) 
 
 ## Status
 
-🚧 **Phase 2 in progress.** Phase 1 (all 9 chunks) is complete — full SPA with globe + detail panel + time scrubbing + text-only fallback at `/text`. Phase 2 chunks 1-5 are live: SATCAT enrichment populates 98.5% of the catalog, the detail panel surfaces the new fields, the Launch Library 2 ingester powers `/text/launches` + four launch JSON endpoints, the Space-Track TIP ingester feeds `/text/decays` + two reentry JSON endpoints, and the new `📍` topbar pill stores an observer location (geolocation / Nominatim city search / manual lat-lon, localStorage-persisted) ready for chunk 6 to compute passes against. Chunks 6-7 remaining (pass predictions, FORMAT=JSON migration).
+🚧 **Phase 2 in progress.** Phase 1 (all 9 chunks) is complete — full SPA with globe + detail panel + time scrubbing + text-only fallback at `/text`. Phase 2 chunks 1-6 are live: SATCAT enrichment populates 98.5% of the catalog, the detail panel surfaces the new fields, the Launch Library 2 ingester powers `/text/launches` + four launch JSON endpoints, the Space-Track TIP ingester feeds `/text/decays` + two reentry JSON endpoints, the `📍` topbar pill stores an observer location, and the chunk-6 pass-prediction pipeline (Node SGP4 subprocess + 6h SQLite cache) feeds `/api/v1/satellites/{norad}/passes` and the new `§ Visibility from observer` section in the detail panel. Chunk 7 remaining (FORMAT=JSON migration + Phase 2 polish).
 
 ### Phase 1 — Foundation MVP (✅ complete)
 
@@ -35,7 +35,7 @@ Part of the **trackr.live family** alongside [trackr.live](https://trackr.live) 
 | 3. Launch Library 2 ingester + launches view | ✅ done | `make ingest-ll2` pulls 50 upcoming + 100 previous launches from ll.thespacedevs.com in ~4s, populating 51 pads + 150 launch records (idempotent UPSERT, FK-safe). Four JSON endpoints: `GET /api/v1/launches/{upcoming,recent,{id}}` + `GET /api/v1/launch-sites`. Server-rendered text views at `/text/launches` (countdowns), `/text/launches/recent`, `/text/launches/{uuid}`. Topbar's `§ launches` placeholder is now a real link. **92 PHP / 31 JS passing.** |
 | 4. Space-Track ingester + reentries view | ✅ done | `make ingest-spacetrack` pulls TIP messages from www.space-track.org via cookie-jar session in ~1.2s; UPSERT keyed on `(norad_id, source)`; TIPs for objects we don't catalog are skipped (44/50 in the first real run). Two JSON endpoints — `GET /api/v1/reentries/upcoming?within_hours=N` (default 168, max 720) + `GET /api/v1/reentries/{norad}` — and a server-rendered `/text/decays` mirror with countdowns + tri-color risk badge. SPA topbar + text nav grow `§ decays`. **110 PHP / 31 JS passing.** |
 | 5. Observer location handling | ✅ done | New `<sat-observer-pill>` lives in the topbar between search and the theme switcher; collapses to `📍 set location` when unset, `📍 short-label (lat°, lon°)` once chosen. Three input modes: 🛰 use my location (geolocation), 🌍 city search (Nominatim, debounced 350ms + rate-limited 1 req/s), ⌖ manual lat/lon. Persisted to localStorage as `sat:observer`; survives reload + discards malformed JSON cleanly. Subscriber-friendly so chunk 6 can react. **110 PHP / 44 JS passing** (+13 new vitest specs). |
-| 6. Pass predictions (calc + UI) | ⏳ pending | Hybrid client-side (browser worker) + server-side (Node subprocess) SGP4; `/api/v1/satellites/{norad}/passes`; "Visibility from observer" panel section |
+| 6. Pass predictions (calc + UI) | ✅ done | Pure-function pass detector (`resources/js/passes/computePasses.ts`) walks SGP4 elevation curves and refines rise/peak/set with 12-step bisection. Mirrored in `bin/sgp4-passes.mjs` Node CLI; PHP `PassCalculator` shells out via `proc_open` with a 15s timeout. `PassCache` (6h TTL keyed on NORAD + observer-3dp + day) keeps repeats under ~30ms. `GET /api/v1/satellites/{norad}/passes?lat&lon` (cache 5min + swr=10min) and a new `§ Visibility from observer` section in the detail panel that fetches the next 5 passes when the 📍 pill has a location set. `make pass-cache-prune` sweeps expired rows. **124 PHP / 49 JS passing.** *Deferred to chunk 7: N2YO magnitude enrichment + browser-worker compute path.* |
 | 7. CelesTrak FORMAT=JSON migration + Phase 2 polish | ⏳ pending | Switch GP ingest from FORMAT=TLE to FORMAT=JSON before mid-2026 6-digit NORAD ID transition; cron-entries doc; README closes Phase 2 |
 
 See [`docs/phase1.md`](docs/phase1.md) and [`docs/phase2.md`](docs/phase2.md) for design details, and [`req_spec.md`](req_spec.md) for the long-form vision (sections §1–§30).
@@ -75,6 +75,9 @@ curl http://localhost:8000/api/v1/launch-sites                 # all 51 pads alp
 # Reentries (Phase 2 chunk 4 — populated by `make ingest-spacetrack`)
 curl 'http://localhost:8000/api/v1/reentries/upcoming?within_hours=720'  # next 30 days
 curl http://localhost:8000/api/v1/reentries/54837                        # one prediction by NORAD
+
+# Pass predictions (Phase 2 chunk 6 — Node SGP4 + 6h SQLite cache)
+curl 'http://localhost:8000/api/v1/satellites/25544/passes?lat=51.5072&lon=-0.1276&days=2'  # ISS over London, next 2 days
 ```
 
 Every response carries an `ETag`; pass it back via `If-None-Match` to get a 304 Not Modified. CORS is fully open (`Access-Control-Allow-Origin: *`) and OPTIONS preflight returns 204 in <5ms.
@@ -131,10 +134,11 @@ make ingest-satcat                    # CelesTrak SATCAT — operator/country/la
 make ingest-satcat-group GROUP=starlink  # just one SATCAT group
 make ingest-ll2                       # Launch Library 2 — 50 upcoming + 100 previous launches in ~4s (Phase 2 chunk 3)
 make ingest-spacetrack                # Space-Track TIP — predicted reentries in ~1.2s (Phase 2 chunk 4)
+make pass-cache-prune                 # Sweep expired pass-cache rows (Phase 2 chunk 6)
 make health                           # PHP / pdo_sqlite / DB / per-table row counts
 
 # Quality gates
-make test                             # 77 PHP tests + 31 JS = 108 cases passing
+make test                             # 124 PHP + 49 JS = 173 cases passing
 make lint / make analyze / make typecheck / make ci
 ```
 
@@ -153,7 +157,7 @@ The schema after `make migrate` matches `docs/phase1.md` § V exactly:
 | `launch_sites` | LL2 launch pads | Populated by `make ingest-ll2` (Phase 2 chunk 3); ~51 rows on first run |
 | `launches` | LL2 launch records | Populated by `make ingest-ll2` (Phase 2 chunk 3); 150 rows (50 upcoming + 100 previous) |
 | `reentries` | Predicted decays from Space-Track TIP + CelesTrak SATCAT | Populated by `make ingest-spacetrack` (Phase 2 chunk 4); UPSERT keyed on `(norad_id, source)` so re-runs refresh predictions in place |
-| `pass_cache` | Server-side pass-prediction cache (6h TTL) | Created by Phase 2 chunk 1 migration; populated by Phase 2 chunk 6 PassCalculator |
+| `pass_cache` | Server-side pass-prediction cache (6h TTL) | Populated by `PassCache::put()` whenever the chunk-6 controller spawns a fresh Node subprocess; key = `{norad}:{lat-3dp}:{lon-3dp}:{day}`. Sweep with `make pass-cache-prune`. |
 | `migrations` | Auto-created by Migrator | Tracks applied filename + batch + timestamp |
 
 ### API endpoint reference (chunk 4)
@@ -174,6 +178,7 @@ The schema after `make migrate` matches `docs/phase1.md` § V exactly:
 | `GET /api/v1/launch-sites` | All ~51 pads alphabetical | Cache 24h |
 | `GET /api/v1/reentries/upcoming` | Predicted reentries within `within_hours` (default 168, max 720) | Joined with satellite name + object_type; cache 10min + swr=15min |
 | `GET /api/v1/reentries/{norad}` | Most-recently-updated prediction for a NORAD; raw TIP message decoded; nested satellite block | 404 on no prediction; cache 5min + swr=10min |
+| `GET /api/v1/satellites/{norad}/passes` | Up to 14 days of pass predictions for an observer; required `lat`+`lon`, optional `alt`/`days`/`min_elevation_deg`. Each pass is rise/peak/set ISO + duration + max elevation + 3 azimuths. `meta.from_cache` flags hits | Cold ~250ms (Node spawn), warm ~30ms; cache 5min + swr=10min |
 
 Default response headers: `Content-Type: application/json; charset=utf-8`, `Cache-Control: public, max-age=60, stale-while-revalidate=120` (controllers override per-route — bulk-TLE uses 300s, group lists use 3600s), `ETag: W/"<sha1-of-body>"` plus open CORS (`*`). `If-None-Match` → 304.
 
@@ -306,7 +311,18 @@ See [`docs/phase1.md` § X](docs/phase1.md) for the full deploy notes. TL;DR:
 2. Select PHP 8.4; confirm `pdo_sqlite` enabled.
 3. Place `.env` (`APP_ENV=prod`) and `.env.prod` (creds) at the repo root — both gitignored.
 4. `git pull && make install-prod && make build && make migrate && make ingest`.
-5. Add cron: `0 */6 * * * cd ~/sat.trackr.live && make ingest >> storage/logs/cron.log 2>&1`.
+5. Add cron entries (Phase 2 chunks 1–6 ingest schedule + cache pruning):
+
+   ```cron
+   0 */6 * * *   cd ~/sat.trackr.live && make ingest            >> storage/logs/cron.log 2>&1
+   0 4 * * *     cd ~/sat.trackr.live && make ingest-satcat     >> storage/logs/cron.log 2>&1
+   0 * * * *     cd ~/sat.trackr.live && make ingest-ll2 MODE=upcoming   >> storage/logs/cron.log 2>&1
+   0 */6 * * *   cd ~/sat.trackr.live && make ingest-ll2 MODE=previous   >> storage/logs/cron.log 2>&1
+   0 */12 * * *  cd ~/sat.trackr.live && make ingest-spacetrack >> storage/logs/cron.log 2>&1
+   30 4 * * *    cd ~/sat.trackr.live && make pass-cache-prune  >> storage/logs/cron.log 2>&1
+   ```
+
+6. Confirm Node ≥ 20 is on PATH for the prod user (chunk 6's `bin/sgp4-passes.mjs` shells out to it). DreamHost VPS supports `nvm`; set `NODE_BINARY=/full/path/to/node` in `.env.prod` if `node` isn't on the cron `$PATH`.
 
 Apache config relies on `public/.htaccess` (rewrites + cache headers + security headers).
 
