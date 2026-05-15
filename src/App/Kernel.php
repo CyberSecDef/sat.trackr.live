@@ -18,6 +18,7 @@ use SatTrackr\Http\Controllers\SearchController;
 use SatTrackr\Http\Controllers\SpaShellController;
 use SatTrackr\Http\Controllers\ReentryDetailController;
 use SatTrackr\Http\Controllers\ReentryListController;
+use SatTrackr\Http\Controllers\SatellitePassesController;
 use SatTrackr\Http\Controllers\UpcomingLaunchesController;
 use SatTrackr\Http\Controllers\Text\TextCatalogController;
 use SatTrackr\Http\Controllers\Text\TextDecaysController;
@@ -85,6 +86,7 @@ final class Kernel
             $api->get('/satellites', SatelliteListController::class);
             $api->get('/satellites/{norad:[0-9]+}', SatelliteDetailController::class);
             $api->get('/satellites/{norad:[0-9]+}/tle', SatelliteTleController::class);
+            $api->get('/satellites/{norad:[0-9]+}/passes', SatellitePassesController::class);
             $api->get('/groups', GroupListController::class);
             $api->get('/groups/{slug:[a-zA-Z0-9_\-]+}', GroupDetailController::class);
             $api->get('/groups/{slug:[a-zA-Z0-9_\-]+}/tles', GroupTlesController::class);

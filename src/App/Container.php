@@ -38,6 +38,7 @@ use SatTrackr\Http\Controllers\SearchController;
 use SatTrackr\Http\Controllers\SpaShellController;
 use SatTrackr\Http\Controllers\ReentryDetailController;
 use SatTrackr\Http\Controllers\ReentryListController;
+use SatTrackr\Http\Controllers\SatellitePassesController;
 use SatTrackr\Http\Controllers\UpcomingLaunchesController;
 use SatTrackr\Http\Middleware\CorsMiddleware;
 use SatTrackr\Http\Middleware\ErrorHandlerMiddleware;
@@ -46,6 +47,7 @@ use SatTrackr\Http\Middleware\JsonResponseMiddleware;
 use SatTrackr\Services\FreshnessClassifier;
 use SatTrackr\Services\PassCache;
 use SatTrackr\Services\PassCalculator;
+use SatTrackr\Services\PassCalculatorInterface;
 use SatTrackr\Ingest\CelesTrakClient;
 use SatTrackr\Ingest\CelesTrakIngester;
 use SatTrackr\Ingest\LaunchLibraryClient;
@@ -177,6 +179,13 @@ final class Container
             ReentryListController::class      => static fn (DIContainer $c) => new ReentryListController($c->get(Connection::class)),
             ReentryDetailController::class    => static fn (DIContainer $c) => new ReentryDetailController($c->get(Connection::class)),
 
+            // Pass predictions (Phase 2 chunk 6)
+            SatellitePassesController::class  => static fn (DIContainer $c) => new SatellitePassesController(
+                $c->get(Connection::class),
+                $c->get(PassCalculatorInterface::class),
+                $c->get(PassCache::class),
+            ),
+
             Connection::class => static function () use ($rootDir): Connection {
                 $dbPath = EnvLoader::get('DB_PATH', 'data/sat.db') ?? 'data/sat.db';
                 if (!str_starts_with($dbPath, '/') && $dbPath !== ':memory:') {
@@ -234,6 +243,7 @@ final class Container
                 nodeBinary: EnvLoader::get('NODE_BINARY', 'node') ?? 'node',
                 logger:     $c->get(LoggerInterface::class),
             ),
+            PassCalculatorInterface::class => static fn (DIContainer $c) => $c->get(PassCalculator::class),
 
             // CLI commands
             MigrateCommand::class         => static fn (DIContainer $c) => new MigrateCommand($c->get(Migrator::class)),

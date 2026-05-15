@@ -17,7 +17,7 @@ use RuntimeException;
  * cached for 6h by {@see PassCache} so the controller almost always
  * skips this path on the second hit.
  */
-final class PassCalculator
+final class PassCalculator implements PassCalculatorInterface
 {
     private const TIMEOUT_SECONDS = 15;
 
