@@ -37,6 +37,7 @@ export class SatDetailPanel extends LitElement {
   @state() private passesLoading = false;
   @state() private passesError: string | null = null;
   @state() private passesFromCache = false;
+  @state() private ribbonOrbits = 1;
 
   private liveTimer: number | null = null;
   private lastFetchedNorad: number | null = null;
@@ -382,6 +383,18 @@ export class SatDetailPanel extends LitElement {
     );
   }
 
+  private setRibbonOrbits(orbits: number): void {
+    if (orbits === this.ribbonOrbits) return;
+    this.ribbonOrbits = orbits;
+    this.dispatchEvent(
+      new CustomEvent<{ orbits: number }>('ribbon-orbits-change', {
+        detail: { orbits },
+        bubbles: true,
+        composed: true,
+      }),
+    );
+  }
+
   private async copyTle(): Promise<void> {
     if (this.detail?.tle_current === null || this.detail?.tle_current === undefined) return;
     const text = `${this.detail.name}\n${this.detail.tle_current.line1}\n${this.detail.tle_current.line2}`;
@@ -555,12 +568,37 @@ export class SatDetailPanel extends LitElement {
 
   private renderOrbital(d: SatelliteDetail) {
     const t = d.tle_current!;
+    const orbitsOptions: Array<{ value: number; label: string }> = [
+      { value: 0.5, label: '½' },
+      { value: 1,   label: '1' },
+      { value: 2,   label: '2' },
+      { value: 3,   label: '3' },
+    ];
     return html`
       <section>
         <h2>§ Orbital elements</h2>
         <div class="epoch-row" style="margin-bottom: 0.5rem;">
           <span style="font-family: var(--font-mono); font-size: 0.8rem;">${t.epoch}</span>
           <sat-freshness-badge epoch=${t.epoch}></sat-freshness-badge>
+        </div>
+        <div style="display: flex; align-items: center; gap: 0.4rem; margin-bottom: 0.6rem; font-family: var(--font-mono); font-size: 0.75rem; color: var(--color-text-dim);">
+          <span>Ribbon:</span>
+          ${orbitsOptions.map(
+            (o) => html`<button
+              @click=${() => this.setRibbonOrbits(o.value)}
+              style=${`
+                padding: 0.1rem 0.45rem;
+                background: ${this.ribbonOrbits === o.value ? 'var(--color-accent)' : 'transparent'};
+                color: ${this.ribbonOrbits === o.value ? 'var(--color-bg)' : 'var(--color-text)'};
+                border: 1px solid var(--color-border);
+                border-radius: 3px;
+                font-family: var(--font-mono);
+                font-size: 0.75rem;
+                cursor: pointer;
+              `}
+            >${o.label}</button>`
+          )}
+          <span style="color: var(--color-text-dim);">orbit${this.ribbonOrbits === 1 ? '' : 's'}</span>
         </div>
         <div class="grid">
           ${this.field('Period', `${t.period_min.toFixed(2)} min`)}

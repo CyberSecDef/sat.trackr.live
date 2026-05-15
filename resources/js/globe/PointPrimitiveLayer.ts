@@ -41,6 +41,8 @@ export class PointPrimitiveLayer {
   private typeByNorad = new Map<number, string>();
   /** norad_id → most recent ECEF position (meters) */
   private positionByNorad = new Map<number, Cesium.Cartesian3>();
+  /** norad_id → raw TLE strings (used by chunk-2 OrbitRibbonLayer to rebuild satrecs) */
+  private tleByNorad = new Map<number, { line1: string; line2: string }>();
   private highlighted: number | null = null;
   private unsubscribeTick: (() => void) | null = null;
   private lastPropagatedClockMs = 0;
@@ -74,6 +76,7 @@ export class PointPrimitiveLayer {
     this.indexByNorad.clear();
     this.typeByNorad.clear();
     this.positionByNorad.clear();
+    this.tleByNorad.clear();
     this.highlighted = null;
 
     for (let i = 0; i < records.length; i++) {
@@ -89,6 +92,7 @@ export class PointPrimitiveLayer {
       });
       this.indexByNorad.set(r.norad_id, i);
       this.typeByNorad.set(r.norad_id, type);
+      this.tleByNorad.set(r.norad_id, { line1: r.line1, line2: r.line2 });
     }
     this.count = records.length;
 
@@ -98,6 +102,14 @@ export class PointPrimitiveLayer {
   /** Latest known ECEF position (meters) for the given NORAD, if any. */
   getPosition(norad: number): Cesium.Cartesian3 | null {
     return this.positionByNorad.get(norad) ?? null;
+  }
+
+  /** Raw TLE lines for the given NORAD, if loaded.  Used to build a fresh
+   * satrec on the main thread for the chunk-2 orbit ribbon (the worker
+   * has its own satrecs but doesn't expose them across threads).
+   */
+  getTle(norad: number): { line1: string; line2: string } | null {
+    return this.tleByNorad.get(norad) ?? null;
   }
 
   /**

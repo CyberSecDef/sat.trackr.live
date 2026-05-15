@@ -57,6 +57,7 @@ export class SatApp extends LitElement {
     this.addEventListener('search-select', this.handleSearchSelect as EventListener);
     this.addEventListener('panel-close', this.handlePanelClose as EventListener);
     this.addEventListener('clock-ready', this.handleClockReady as EventListener);
+    this.addEventListener('ribbon-orbits-change', this.handleRibbonOrbits as EventListener);
   }
 
   disconnectedCallback(): void {
@@ -65,6 +66,7 @@ export class SatApp extends LitElement {
     this.removeEventListener('search-select', this.handleSearchSelect as EventListener);
     this.removeEventListener('panel-close', this.handlePanelClose as EventListener);
     this.removeEventListener('clock-ready', this.handleClockReady as EventListener);
+    this.removeEventListener('ribbon-orbits-change', this.handleRibbonOrbits as EventListener);
   }
 
   private handleClockReady = (e: CustomEvent<{ clock: Clock }>): void => {
@@ -85,10 +87,15 @@ export class SatApp extends LitElement {
     this.applySelection(null, false);
   };
 
+  private handleRibbonOrbits = (e: CustomEvent<{ orbits: number }>): void => {
+    this.globeRef.value?.globe.ribbons?.setOrbits(e.detail.orbits);
+  };
+
   private applySelection(norad: number | null, fly: boolean): void {
     this.selected = norad;
     const globe = this.globeRef.value?.globe;
     globe?.layer?.setHighlight(norad);
+    globe?.setRibbonTarget(norad);
     if (fly && norad !== null) {
       globe?.flyToSatellite(norad);
     }

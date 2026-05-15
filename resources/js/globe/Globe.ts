@@ -2,9 +2,11 @@ import { LitElement, html, css } from 'lit';
 import { customElement, property, state } from 'lit/decorators.js';
 import { ref, createRef, type Ref } from 'lit/directives/ref.js';
 import * as Cesium from 'cesium';
+import { twoline2satrec } from 'satellite.js';
 import { getGroupTles, ApiError } from '../api/client';
 import { Clock } from '../time/Clock';
 import { createImageryProvider } from './imagery';
+import { OrbitRibbonLayer } from './OrbitRibbonLayer';
 import { PointPrimitiveLayer } from './PointPrimitiveLayer';
 import { SelectionController } from './SelectionController';
 
@@ -19,8 +21,10 @@ const DEFAULT_GROUP = 'active';
 export class Globe {
   private viewer?: Cesium.Viewer;
   public layer?: PointPrimitiveLayer;
+  public ribbons?: OrbitRibbonLayer;
   public selection?: SelectionController;
   public clock?: Clock;
+  private ribbonTickUnsub: (() => void) | null = null;
 
   async init(
     container: HTMLElement,
@@ -83,8 +87,14 @@ export class Globe {
     this.clock = new Clock(viewer.clock);
     this.layer = new PointPrimitiveLayer(viewer.scene, this.clock);
     this.layer.onStatusChange = opts.onStatus;
+    this.ribbons = new OrbitRibbonLayer(viewer.scene);
     this.selection = new SelectionController(viewer, opts.onSelect);
     opts.onClockReady?.(this.clock);
+
+    // Phase 3 chunk 2B: refresh the active orbit ribbon as the user
+    // scrubs time.  OrbitRibbonLayer.update() throttles to ~once per
+    // 1/30 of the satellite's period, so the cost is bounded.
+    this.ribbonTickUnsub = this.clock.onTick((timeMs) => this.ribbons?.update(timeMs));
 
     opts.onStatus('Loading satellite catalog…');
     try {
@@ -121,12 +131,38 @@ export class Globe {
     });
   }
 
+  /**
+   * Show / hide the orbit ribbon for a NORAD.  Pulls the raw TLE
+   * lines back from PointPrimitiveLayer (loaded at startup) and
+   * builds a fresh satrec on the main thread for the ribbon — the
+   * worker has its own satrecs but they're not transferable.
+   * Pass null to clear.
+   */
+  setRibbonTarget(norad: number | null): void {
+    if (!this.ribbons || !this.layer || !this.clock) return;
+    if (norad === null) {
+      this.ribbons.hide();
+      return;
+    }
+    const tle = this.layer.getTle(norad);
+    if (tle === null) {
+      this.ribbons.hide();
+      return;
+    }
+    const satrec = twoline2satrec(tle.line1, tle.line2);
+    this.ribbons.show(satrec, this.clock.getTimeMs());
+  }
+
   destroy(): void {
+    this.ribbonTickUnsub?.();
+    this.ribbonTickUnsub = null;
     this.selection?.destroy();
+    this.ribbons?.destroy();
     this.layer?.destroy();
     this.viewer?.destroy();
     this.viewer = undefined;
     this.layer = undefined;
+    this.ribbons = undefined;
     this.selection = undefined;
   }
 }
