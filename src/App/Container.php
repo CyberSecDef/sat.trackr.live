@@ -44,6 +44,7 @@ use SatTrackr\Ingest\CelesTrakClient;
 use SatTrackr\Ingest\CelesTrakIngester;
 use SatTrackr\Ingest\LaunchLibraryClient;
 use SatTrackr\Ingest\LaunchLibraryIngester;
+use SatTrackr\Ingest\SpaceTrackClient;
 use SatTrackr\Ingest\SatCatClient;
 use SatTrackr\Ingest\SatCatIngester;
 use SatTrackr\Ingest\TleParser;
@@ -202,6 +203,11 @@ final class Container
                 client: $c->get(LaunchLibraryClient::class),
                 db:     $c->get(Connection::class),
                 logger: $c->get(LoggerInterface::class),
+            ),
+            SpaceTrackClient::class => static fn (DIContainer $c) => new SpaceTrackClient(
+                $c->get(GuzzleClient::class),
+                EnvLoader::get('SPACE_TRACK_USER', '') ?? '',
+                EnvLoader::get('SPACE_TRACK_PASS', '') ?? '',
             ),
 
             // CLI commands
