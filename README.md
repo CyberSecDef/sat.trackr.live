@@ -10,7 +10,7 @@ Part of the **trackr.live family** alongside [trackr.live](https://trackr.live) 
 
 ## Status
 
-✅ **Phase 2 complete.** All 16 chunks across phases 1-2 are live: full SPA with globe + detail panel + time scrubbing + text-only fallback at `/text`; SATCAT enrichment populates 98.5% of the catalog; the Launch Library 2 ingester powers `/text/launches` + four launch JSON endpoints; the Space-Track TIP ingester feeds `/text/decays` + two reentry JSON endpoints; the `📍` topbar pill stores an observer location; the pass-prediction pipeline (Node SGP4 subprocess + 6h SQLite cache) feeds `/api/v1/satellites/{norad}/passes` and a `§ Visibility from observer` section in the detail panel; and the CelesTrak ingest path now supports `FORMAT=JSON` (OMM) with Alpha-5 NORAD encoding for the mid-2026 6-digit transition. **Phase 3 next** — see [`docs/phase3.md`](docs/phase3.md) for the showcase-visuals outline.
+✅ **Phase 3 complete.** All 22 chunks across phases 1-3 are live. **Foundation:** full SPA with globe + detail panel + time scrubbing + text-only fallback at `/text`. **Data depth (Phase 2):** SATCAT enrichment, Launch Library 2 ingester + 4 launch JSON endpoints + `/text/launches`, Space-Track TIP ingester + 2 reentry JSON endpoints + `/text/decays`, `📍` observer pill, Node-SGP4 pass-prediction pipeline + `§ Visibility` panel section, CelesTrak `FORMAT=JSON` (OMM) ingest with Alpha-5 NORAD encoding. **Showcase visuals (Phase 3):** Cesium lighting + sun + moon + BSC5 starfield, fading orbit ribbons for the selected satellite, 3D shape stand-ins for marquee satellites with LOD swap, ~40-station ground-station layer with 5° sensor cones, NASA VIIRS Earth-at-Night overlay (`dayAlpha=0`/`nightAlpha=0.85`), `§ overlays` topbar menu persisting to localStorage, "Above horizon now?" elevation/azimuth line in the panel, Playwright smoke suite. **Phase 4 next** — see [`docs/phase4.md`](docs/phase4.md) for the situational-awareness outline (SOCRATES conjunctions, NOAA space weather, aurora overlay, stats dashboard, events feed + Atom).
 
 ### Phase 1 — Foundation MVP (✅ complete)
 
@@ -38,7 +38,7 @@ Part of the **trackr.live family** alongside [trackr.live](https://trackr.live) 
 | 6. Pass predictions (calc + UI) | ✅ done | Pure-function pass detector (`resources/js/passes/computePasses.ts`) walks SGP4 elevation curves and refines rise/peak/set with 12-step bisection. Mirrored in `bin/sgp4-passes.mjs` Node CLI; PHP `PassCalculator` shells out via `proc_open` with a 15s timeout. `PassCache` (6h TTL keyed on NORAD + observer-3dp + day) keeps repeats under ~30ms. `GET /api/v1/satellites/{norad}/passes?lat&lon` (cache 5min + swr=10min) and a new `§ Visibility from observer` section in the detail panel that fetches the next 5 passes when the 📍 pill has a location set. `make pass-cache-prune` sweeps expired rows. **124 PHP / 49 JS passing.** *Deferred to chunk 7: N2YO magnitude enrichment + browser-worker compute path.* |
 | 7. CelesTrak FORMAT=JSON migration + Phase 2 polish | ✅ done | `NoradId::encode/decode` Alpha-5 helper (`A0000`–`Z9999` = 100000–339999, `I` and `O` skipped) so `TleParser` keeps parsing once CelesTrak hits 6-digit NORAD IDs (~mid-2026). New `OmmJsonParser` consumes CelesTrak `FORMAT=JSON` records and produces the same `ParsedTle` value object the TLE path emits — including byte-perfect synthesized line1/line2 strings via `TleEmitter` so `satellite.js`, the SPA worker, and the copy-to-clipboard panel keep working unchanged. `bin/console ingest:celestrak --format=json` flips the source format end-to-end (TLE remains the default while we cut over). Phase 3 outline lands at `docs/phase3.md`. **149 PHP / 49 JS passing.** *Deferred to Phase 3 / 4: N2YO magnitude enrichment, browser-worker compute_passes path, "above horizon now?" line in §Visibility — see `docs/phase3.md` § V.* |
 
-### Phase 3 — Showcase visuals (🚧 in progress)
+### Phase 3 — Showcase visuals (✅ complete)
 
 | Chunk | Status | What it adds |
 |---|---|---|
@@ -47,9 +47,13 @@ Part of the **trackr.live family** alongside [trackr.live](https://trackr.live) 
 | 3. 3D models (ISS / Tiangong / Hubble / Dragon / Cygnus / Soyuz / Starlink) | ✅ done (stand-in shapes) | New `marqueeRegistry` (7 entries: 3 stations/telescopes + 3 cargo capsules + a Starlink stand-in matched by name prefix). `MarqueeShapeLayer` renders a colored Cesium `BoxGeometry`/`CylinderGeometry` primitive at the satellite's ECEF position, oriented to local east-north-up, when (a) the selected satellite is in the roster AND (b) the camera is within 5,000km of it. Visual scale exaggerated (×120 ISS, ×900 Starlink) so the primitive is visible at LOD threshold. **Honest tradeoff vs spec:** ships procedural primitives instead of self-hosted glTF for chunk 3 — the LOD swap, scaling, color-coding, and host wiring all work the same; swapping in real glTF is a one-method change in `MarqueeShapeLayer.buildPrimitive` (extend `MarqueeSpec` with a `gltfUri` field + call `Cesium.Model.fromGltfAsync`). Bundle: 115.3 → 119.2 KB gzipped main. **149 PHP / 64 JS passing.** |
 | 4. Ground stations + sensor cones | ✅ done | New `resources/data/ground_stations.json` (41 sites: 6 NEN + 3 DSN + 9 ESTRACK + 4 JAXA + 5 ISRO + 8 KSAT + 5 AWS + 1 ATLAS). `GroundStationLayer` renders each as a network-colored 6px PointPrimitive + a 5°-half-angle CylinderGeometry cone (apex at the station, 1,000 km tall, base in the sky). New `<sat-overlays-menu>` topbar dropdown sits between the 📍 pill and the theme switcher with four checkboxes (orbit ribbon / 3D shapes / ground stations / light pollution). State persists to localStorage as `sat:overlays`; partial JSON merges into defaults. Globe subscribes — toggling rebuilds visibility for ribbons + marquee + stations layers. Bundle: 119.2 → 133.7 KB gzipped main. **149 PHP / 76 JS passing.** |
 | 5. Light pollution overlay | ✅ done | NASA's 2012 VIIRS Earth-at-Night composite (3600×1800 JPG, 794 KB committed at `public/textures/earth-at-night.jpg`) — much lighter than the 40 MB budget. `LightPollutionLayer` adds a `Cesium.SingleTileImageryProvider` on top of the base imagery with `dayAlpha=0` + `nightAlpha=0.85` so city lights show only on the dark side, composing naturally with the chunk-1 terminator. Genuinely lazy-loaded: the JPG isn't requested until the user toggles "Light pollution" on for the first time. Bundle: 133.7 → 134.8 KB gzipped main (+0.3 KB — layer file only). **149 PHP / 76 JS passing.** |
-| 6. Polish + Playwright + Phase 4 outline | ⏳ pending | Bundle audit, "above horizon now?" line, visual-diff baselines, drafts `docs/phase4.md` |
+| 6. Polish + Playwright + Phase 4 outline | ✅ done | "Above horizon now?" line in `§ Visibility` (live elevation/azimuth + compass octant, accent-colored Yes/No verdict, updated every 500ms via the existing `tickLive()` loop). Bundle audit: 41.87 KB gzipped main, well under the 250 KB target. Lazy-load verified: VIIRS JPG isn't requested until "Light pollution" is toggled on for the first time; ground-station catalog + marquee registry inlined. Playwright + chromium installed; 3 smoke specs (`tests/E2E/smoke.spec.ts`) pass in 9.8s — `make test-e2e` runs them. Visual-diff baselines for the Cesium globe deferred to Phase 4 chunk 6 polish where the new HTML surfaces are easier to baseline. `docs/phase4.md` outlines situational-awareness chunks. **149 PHP / 76 JS / 3 e2e passing.** |
 
-See [`docs/phase3.md`](docs/phase3.md) for the locked plan, decisions, dependencies, and risk.
+### Phase 4 — Situational awareness (⏳ next)
+
+See [`docs/phase4.md`](docs/phase4.md) for the outline. TL;DR: SOCRATES conjunctions, NOAA SWPC space-weather widget, OVATION aurora overlay, stats dashboard, events feed + Atom 1.0 syndication.
+
+See [`docs/phase3.md`](docs/phase3.md) for the locked Phase 3 plan, decisions, dependencies, and risk.
 
 See [`docs/phase1.md`](docs/phase1.md) and [`docs/phase2.md`](docs/phase2.md) for design details, and [`req_spec.md`](req_spec.md) for the long-form vision (sections §1–§30).
 
@@ -152,7 +156,8 @@ make build-skybox                     # Regenerate BSC5 starfield cubemap into p
 make health                           # PHP / pdo_sqlite / DB / per-table row counts
 
 # Quality gates
-make test                             # 149 PHP + 49 JS = 198 cases passing
+make test                             # 149 PHP + 76 JS = 225 cases passing
+make test-e2e                         # Playwright smoke specs (Phase 3 chunk 6) — needs `npx playwright install chromium` once
 make lint / make analyze / make typecheck / make ci
 ```
 
