@@ -309,6 +309,7 @@ $description = $description ?? 'Text catalog of every tracked satellite in Earth
     <nav class="top" aria-label="Primary">
       <a href="/text" class="<?= $activeNav === 'catalog' ? 'active' : '' ?>">§ catalog</a>
       <a href="/text/groups" class="<?= $activeNav === 'groups' ? 'active' : '' ?>">§ groups</a>
+      <a href="/text/launches" class="<?= $activeNav === 'launches' ? 'active' : '' ?>">§ launches</a>
       <a href="/text/search" class="<?= $activeNav === 'search' ? 'active' : '' ?>">§ search</a>
       <a href="/" class="globe-link">🌐 globe view</a>
     </nav>

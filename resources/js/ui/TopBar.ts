@@ -100,7 +100,7 @@ export class SatTopBar extends LitElement {
       <nav aria-label="Primary">
         <a class="item" href="/text">§ catalog</a>
         <span class="divider" aria-hidden="true">·</span>
-        <span class="item item--placeholder" title="coming in Phase 2">§ launches</span>
+        <a class="item" href="/text/launches">§ launches</a>
         <span class="divider" aria-hidden="true">·</span>
         <span class="item item--placeholder" title="coming in Phase 4">§ events</span>
       </nav>

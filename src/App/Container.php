@@ -50,6 +50,8 @@ use SatTrackr\Ingest\TleParser;
 use SatTrackr\Http\Controllers\Text\TextCatalogController;
 use SatTrackr\Http\Controllers\Text\TextGroupController;
 use SatTrackr\Http\Controllers\Text\TextGroupsController;
+use SatTrackr\Http\Controllers\Text\TextLaunchDetailController;
+use SatTrackr\Http\Controllers\Text\TextLaunchListController;
 use SatTrackr\Http\Controllers\Text\TextSatelliteController;
 use SatTrackr\Http\Controllers\Text\TextSearchController;
 use SatTrackr\Services\HttpClientFactory;

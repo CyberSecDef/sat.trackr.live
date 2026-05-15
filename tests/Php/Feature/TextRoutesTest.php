@@ -10,6 +10,8 @@ use SatTrackr\Database\Migrator;
 use SatTrackr\Http\Controllers\Text\TextCatalogController;
 use SatTrackr\Http\Controllers\Text\TextGroupController;
 use SatTrackr\Http\Controllers\Text\TextGroupsController;
+use SatTrackr\Http\Controllers\Text\TextLaunchDetailController;
+use SatTrackr\Http\Controllers\Text\TextLaunchListController;
 use SatTrackr\Http\Controllers\Text\TextSatelliteController;
 use SatTrackr\Http\Controllers\Text\TextSearchController;
 use SatTrackr\Services\TextRenderer;
@@ -78,6 +80,17 @@ final class TextRoutesTest extends TestCase
                            (25544, 'active',   '{$now}'),
                            (44713, 'starlink', '{$now}'),
                            (44713, 'active',   '{$now}')");
+
+        // Phase 2 chunk 3D fixtures: a pad and 2 launches (one upcoming, one recent).
+        $future  = (new \DateTimeImmutable('now', new \DateTimeZone('UTC')))->modify('+5 days')->format('Y-m-d\TH:i:s\Z');
+        $past20d = (new \DateTimeImmutable('now', new \DateTimeZone('UTC')))->modify('-20 days')->format('Y-m-d\TH:i:s\Z');
+        $pdo->exec("INSERT INTO launch_sites (id, name, latitude, longitude, country, operator, url, updated_at)
+                    VALUES (80, 'Space Launch Complex 40', 28.5618, -80.5772, 'USA', 'Cape Canaveral SFS, FL, USA', NULL, '{$now}')");
+        $pdo->exec("INSERT INTO launches
+                    (id, name, net, status, provider, vehicle, pad_id, mission_name, mission_type, orbit_target, customer, webcast_url, image_url, description, associated_norad_ids, updated_at)
+                    VALUES
+                      ('uuid-up', 'Falcon 9 | Starlink Future', '{$future}',  'GO',      'SpaceX', 'Falcon 9', 80, 'Starlink Future', 'Communications', 'LEO', 'SpaceX', NULL, NULL, NULL, '[]',           '{$now}'),
+                      ('uuid-rec','Atlas V | Recent USSF',      '{$past20d}', 'SUCCESS', 'ULA',    'Atlas V',  80, 'USSF Mission',    'Government',     'GTO', 'USSF',   NULL, NULL, NULL, '[25544,44713]', '{$now}')");
     }
 
     public function testCatalogListReturns200WithBothSatellites(): void
@@ -175,6 +188,55 @@ final class TextRoutesTest extends TestCase
         );
         $this->assertStringContainsString('ISS (ZARYA)', $body);
         $this->assertStringContainsString('1 satellites', $body);
+    }
+
+    public function testLaunchesUpcomingShowsFutureOnly(): void
+    {
+        $body = $this->invoke(
+            new TextLaunchListController($this->db, $this->renderer),
+            '/text/launches'
+        );
+        $this->assertStringContainsString('Upcoming launches', $body);
+        $this->assertStringContainsString('Starlink Future', $body);
+        $this->assertStringContainsString('Space Launch Complex 40', $body);
+        $this->assertStringNotContainsString('USSF Mission', $body);
+        $this->assertStringContainsString('T-', $body); // countdown rendered
+    }
+
+    public function testLaunchesRecentShowsPastWindow(): void
+    {
+        $body = $this->invoke(
+            new TextLaunchListController($this->db, $this->renderer),
+            '/text/launches/recent'
+        );
+        $this->assertStringContainsString('Recent launches', $body);
+        $this->assertStringContainsString('USSF Mission', $body);
+        $this->assertStringNotContainsString('Starlink Future', $body);
+    }
+
+    public function testLaunchDetailRendersPadAndCatalogedObjects(): void
+    {
+        $body = $this->invoke(
+            new TextLaunchDetailController($this->db, $this->renderer),
+            '/text/launches/uuid-rec',
+            ['id' => 'uuid-rec']
+        );
+        $this->assertStringContainsString('Atlas V | Recent USSF', $body);
+        $this->assertStringContainsString('§ Pad', $body);
+        $this->assertStringContainsString('Space Launch Complex 40', $body);
+        $this->assertStringContainsString('§ Cataloged objects', $body);
+        $this->assertStringContainsString('NORAD 25544', $body);
+        $this->assertStringContainsString('NORAD 44713', $body);
+    }
+
+    public function testLaunchDetailThrowsHttpNotFoundForUnknownId(): void
+    {
+        $this->expectException(HttpNotFoundException::class);
+        $this->invoke(
+            new TextLaunchDetailController($this->db, $this->renderer),
+            '/text/launches/no-such-id',
+            ['id' => 'no-such-id']
+        );
     }
 
     public function testSearchByFtsNameMatch(): void

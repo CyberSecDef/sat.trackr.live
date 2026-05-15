@@ -20,6 +20,8 @@ use SatTrackr\Http\Controllers\UpcomingLaunchesController;
 use SatTrackr\Http\Controllers\Text\TextCatalogController;
 use SatTrackr\Http\Controllers\Text\TextGroupController;
 use SatTrackr\Http\Controllers\Text\TextGroupsController;
+use SatTrackr\Http\Controllers\Text\TextLaunchDetailController;
+use SatTrackr\Http\Controllers\Text\TextLaunchListController;
 use SatTrackr\Http\Controllers\Text\TextSatelliteController;
 use SatTrackr\Http\Controllers\Text\TextSearchController;
 use SatTrackr\Http\Middleware\CorsMiddleware;
@@ -66,6 +68,11 @@ final class Kernel
         $app->get('/text/groups', TextGroupsController::class);
         $app->get('/text/groups/{slug:[a-zA-Z0-9_\-]+}', TextGroupController::class);
         $app->get('/text/search', TextSearchController::class);
+        // Launches text views (Phase 2 chunk 3D) — order matters: /recent
+        // before {id} so the literal beats the regex.
+        $app->get('/text/launches', TextLaunchListController::class);
+        $app->get('/text/launches/recent', TextLaunchListController::class);
+        $app->get('/text/launches/{id:[a-fA-F0-9-]+}', TextLaunchDetailController::class);
 
         // API routes — Slim binds the group closure to its CallableResolver,
         // which requires a non-static closure (it can't bind $this to a static).
