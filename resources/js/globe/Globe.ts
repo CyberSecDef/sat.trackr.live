@@ -55,6 +55,31 @@ export class Globe {
     viewer.scene.fog.enabled = true;
     viewer.scene.backgroundColor = Cesium.Color.fromCssColorString('#0a0e27');
 
+    // Phase 3 chunk 1: BSC5 starfield + explicit sun/moon.  The
+    // skybox cubemap is generated at build time (see bin/build-skybox.php
+    // and the README "Phase 3 — Showcase visuals" entry); each face is a
+    // 1024² PNG of stars at their J2000 positions, magnitude-graded.
+    // Cesium loads the textures into a SkyBox primitive that sits in
+    // the inertial frame, so the stars track Earth's rotation correctly
+    // as the user scrubs time.
+    const skyboxBase = '/textures/skybox';
+    viewer.scene.skyBox = new Cesium.SkyBox({
+      sources: {
+        positiveX: `${skyboxBase}/px.png`,
+        negativeX: `${skyboxBase}/nx.png`,
+        positiveY: `${skyboxBase}/py.png`,
+        negativeY: `${skyboxBase}/ny.png`,
+        positiveZ: `${skyboxBase}/pz.png`,
+        negativeZ: `${skyboxBase}/nz.png`,
+      },
+    });
+    if (viewer.scene.sun) {
+      viewer.scene.sun.show = true;
+    }
+    if (viewer.scene.moon) {
+      viewer.scene.moon.show = true;
+    }
+
     this.clock = new Clock(viewer.clock);
     this.layer = new PointPrimitiveLayer(viewer.scene, this.clock);
     this.layer.onStatusChange = opts.onStatus;
