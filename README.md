@@ -10,7 +10,7 @@ Part of the **trackr.live family** alongside [trackr.live](https://trackr.live) 
 
 ## Status
 
-🚧 **Phase 2 in progress.** Phase 1 (all 9 chunks) is complete — full SPA with globe + detail panel + time scrubbing + text-only fallback at `/text`. Phase 2 (data depth) chunk 1 is now live: SATCAT enrichment populates 98.5% of the catalog with operator/country/launch_date/RCS/status. Chunks 2-7 remaining.
+🚧 **Phase 2 in progress.** Phase 1 (all 9 chunks) is complete — full SPA with globe + detail panel + time scrubbing + text-only fallback at `/text`. Phase 2 chunks 1-3 are live: SATCAT enrichment populates 98.5% of the catalog, the detail panel surfaces the new fields, and the Launch Library 2 ingester now powers a `/text/launches` view + four launch-related JSON endpoints. Chunks 4-7 remaining (Space-Track reentries, observer location, pass predictions, FORMAT=JSON migration).
 
 ### Phase 1 — Foundation MVP (✅ complete)
 
@@ -32,7 +32,7 @@ Part of the **trackr.live family** alongside [trackr.live](https://trackr.live) 
 |---|---|---|
 | 1. SATCAT ingester + Phase-2 schema | ✅ done | `make ingest-satcat` enriches ~28.8K records (98.5% of catalog) with operator/country/launch_date/launch_site_code/RCS/status/decayed_at in 30s; rebuilds `satellite_purposes` from `group_membership` (12,757 rows). 5 new migrations land the chunks-3-6 tables (`launch_sites`, `launches`, `reentries`, `pass_cache` + a column on `satellites`). 31 new PHPUnit cases, **108 total tests passing**. |
 | 2. Detail panel reads enriched fields | ✅ done | DECAYED satellites filtered out of `/groups/{slug}/tles` (per phase2.md decision 9); `launch_site_code` surfaced in JSON detail + SPA panel + `/text/satellite/{norad}`; "⚠ Reentered" callout when `decayed_at` set; new `Status` column on `/text` catalog list; `make health` reports SATCAT enrichment % (currently 98.5%) and counts all 9 app tables. No new tests (controller polish reuses existing test bed). |
-| 3. Launch Library 2 ingester + launches view | ⏳ pending | `make ingest-ll2`, `/api/v1/launches/*`, `/launches` SPA + `/text/launches` |
+| 3. Launch Library 2 ingester + launches view | ✅ done | `make ingest-ll2` pulls 50 upcoming + 100 previous launches from ll.thespacedevs.com in ~4s, populating 51 pads + 150 launch records (idempotent UPSERT, FK-safe). Four JSON endpoints: `GET /api/v1/launches/{upcoming,recent,{id}}` + `GET /api/v1/launch-sites`. Server-rendered text views at `/text/launches` (countdowns), `/text/launches/recent`, `/text/launches/{uuid}`. Topbar's `§ launches` placeholder is now a real link. **92 PHP / 31 JS passing.** |
 | 4. Space-Track ingester + reentries view | ⏳ pending | `make ingest-spacetrack`, `/api/v1/reentries/*`, `/decays` SPA + `/text/decays` |
 | 5. Observer location handling | ⏳ pending | Geolocation + Nominatim city search + manual lat/lon + localStorage; top-bar `📍` pill |
 | 6. Pass predictions (calc + UI) | ⏳ pending | Hybrid client-side (browser worker) + server-side (Node subprocess) SGP4; `/api/v1/satellites/{norad}/passes`; "Visibility from observer" panel section |
@@ -65,6 +65,12 @@ curl http://localhost:8000/api/v1/groups/starlink/tles       # bulk: 10K Starlin
 curl 'http://localhost:8000/api/v1/search?q=ISS'             # ISS family modules
 curl 'http://localhost:8000/api/v1/search?q=1998-067A'       # by intl designator
 curl 'http://localhost:8000/api/v1/autocomplete?q=star'      # typeahead
+
+# Launches (Phase 2 chunk 3 — populated by `make ingest-ll2`)
+curl 'http://localhost:8000/api/v1/launches/upcoming?limit=5'  # next launches by NET
+curl 'http://localhost:8000/api/v1/launches/recent?days=30'    # last 30 days
+curl 'http://localhost:8000/api/v1/launches/{uuid}'            # detail incl. pad + cataloged objects
+curl http://localhost:8000/api/v1/launch-sites                 # all 51 pads alphabetical
 ```
 
 Every response carries an `ETag`; pass it back via `If-None-Match` to get a 304 Not Modified. CORS is fully open (`Access-Control-Allow-Origin: *`) and OPTIONS preflight returns 204 in <5ms.
@@ -119,6 +125,7 @@ make ingest                           # CelesTrak GP — TLE data for ~15.6K sat
 make ingest-group GROUP=stations      # just one GP group
 make ingest-satcat                    # CelesTrak SATCAT — operator/country/launch_date/RCS/status enrichment in ~30s (Phase 2 chunk 1)
 make ingest-satcat-group GROUP=starlink  # just one SATCAT group
+make ingest-ll2                       # Launch Library 2 — 50 upcoming + 100 previous launches in ~4s (Phase 2 chunk 3)
 make health                           # PHP / pdo_sqlite / DB / per-table row counts
 
 # Quality gates
@@ -138,8 +145,8 @@ The schema after `make migrate` matches `docs/phase1.md` § V exactly:
 | `tle_history` | Append-only TLE archive | Composite PK `(norad_id, epoch)`; INSERT OR IGNORE makes re-ingests cheap |
 | `satellite_purposes` | Join table for §5 SET-style purpose | Populated by SATCAT ingester via `group_membership` heuristic (Phase 2 chunk 1); 12,757 rows after first run |
 | `group_membership` | Join table tracking which CelesTrak group(s) include each satellite | Composite PK `(norad_id, group_slug)` + `last_seen_at`; populated by the ingester on each pass; powers `/api/v1/groups/{slug}*` |
-| `launch_sites` | LL2 launch pads | Created by Phase 2 chunk 1 migration; populated by Phase 2 chunk 3 LL2 ingester |
-| `launches` | LL2 launch records | Created by Phase 2 chunk 1 migration; populated by Phase 2 chunk 3 LL2 ingester |
+| `launch_sites` | LL2 launch pads | Populated by `make ingest-ll2` (Phase 2 chunk 3); ~51 rows on first run |
+| `launches` | LL2 launch records | Populated by `make ingest-ll2` (Phase 2 chunk 3); 150 rows (50 upcoming + 100 previous) |
 | `reentries` | Predicted decays from Space-Track TIP + CelesTrak SATCAT | Created by Phase 2 chunk 1 migration; populated by Phase 2 chunk 4 Space-Track ingester |
 | `pass_cache` | Server-side pass-prediction cache (6h TTL) | Created by Phase 2 chunk 1 migration; populated by Phase 2 chunk 6 PassCalculator |
 | `migrations` | Auto-created by Migrator | Tracks applied filename + batch + timestamp |
@@ -156,6 +163,10 @@ The schema after `make migrate` matches `docs/phase1.md` § V exactly:
 | `GET /api/v1/groups/{slug}/tles` | Bulk TLE blob `{group, count, tles: [...]}` | The hot SPA endpoint; full keys (`norad_id`, `name`, `line1`, `line2`, `object_type`) for readability |
 | `GET /api/v1/search?q=` | Up to 50 results, each with `match_type` | NORAD ID exact > intl designator exact > FTS5 fuzzy |
 | `GET /api/v1/autocomplete?q=` | Up to 10 typeahead results | NORAD ID prefix + FTS5 prefix; 5min cacheable |
+| `GET /api/v1/launches/upcoming` | Next launches by NET, with pad block | `limit` (default 50, max 100); cache 5min + swr=10min |
+| `GET /api/v1/launches/recent` | Past N days of launches, most-recent first | `limit` (default 100, max 200), `days` (default 90, max 365); cache 1h |
+| `GET /api/v1/launches/{uuid}` | Single launch with full detail + pad + decoded `associated_norad_ids` | 404 on unknown UUID |
+| `GET /api/v1/launch-sites` | All ~51 pads alphabetical | Cache 24h |
 
 Default response headers: `Content-Type: application/json; charset=utf-8`, `Cache-Control: public, max-age=60, stale-while-revalidate=120` (controllers override per-route — bulk-TLE uses 300s, group lists use 3600s), `ETag: W/"<sha1-of-body>"` plus open CORS (`*`). `If-None-Match` → 304.
 
@@ -253,8 +264,10 @@ Run `make` with no arguments to print this list. Highlights:
 | `make dev` | PHP + Vite dev servers in parallel (Ctrl-C kills both) |
 | `make serve` | PHP server only, serves the production-built SPA |
 | `make build` | production bundle into `public/build/` |
-| `make migrate` | apply migrations (chunk 2+) |
-| `make ingest` | run CelesTrak ingester (chunk 3+) |
+| `make migrate` | apply migrations (11 total) |
+| `make ingest` | run CelesTrak GP ingester |
+| `make ingest-satcat` | enrich catalog from CelesTrak SATCAT (Phase 2 chunk 1) |
+| `make ingest-ll2` | upsert launches + pads from Launch Library 2 (Phase 2 chunk 3) |
 | `make lint` / `make lint-fix` | PHP-CS-Fixer + ESLint |
 | `make analyze` | PHPStan level 6 |
 | `make typecheck` | tsc --noEmit |
