@@ -5,6 +5,7 @@ import '../css/main.css';
 import './ui/FreshnessBadge';
 import './ui/ThemeSwitcher';
 import './ui/Search';
+import './ui/ObserverPill';
 import './ui/TopBar';
 import './ui/DetailPanel';
 import './ui/Timeline';

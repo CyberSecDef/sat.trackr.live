@@ -108,6 +108,7 @@ export class SatTopBar extends LitElement {
       </nav>
       <div class="actions">
         <sat-search></sat-search>
+        <sat-observer-pill></sat-observer-pill>
         <sat-theme-switcher></sat-theme-switcher>
       </div>
     `;
