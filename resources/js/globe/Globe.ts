@@ -6,10 +6,12 @@ import { twoline2satrec } from 'satellite.js';
 import { getGroupTles, ApiError } from '../api/client';
 import { Clock } from '../time/Clock';
 import { createImageryProvider } from './imagery';
+import { GroundStationLayer } from './GroundStationLayer';
 import { MarqueeShapeLayer } from './MarqueeShapeLayer';
 import { OrbitRibbonLayer } from './OrbitRibbonLayer';
 import { PointPrimitiveLayer } from './PointPrimitiveLayer';
 import { SelectionController } from './SelectionController';
+import { getSharedOverlays, type OverlayState } from '../overlays/OverlayService';
 
 /** The CelesTrak group we render at chunk 5; chunk 6+ may parameterize this. */
 const DEFAULT_GROUP = 'active';
@@ -24,11 +26,16 @@ export class Globe {
   public layer?: PointPrimitiveLayer;
   public ribbons?: OrbitRibbonLayer;
   public marquee?: MarqueeShapeLayer;
+  public stations?: GroundStationLayer;
   public selection?: SelectionController;
   public clock?: Clock;
   private ribbonTickUnsub: (() => void) | null = null;
   private marqueeTickUnsub: (() => void) | null = null;
+  private overlayUnsub: (() => void) | null = null;
   private selectedNorad: number | null = null;
+  private overlayState: OverlayState = {
+    ribbons: true, marquee: true, stations: false, lightPollution: false,
+  };
 
   async init(
     container: HTMLElement,
@@ -93,13 +100,28 @@ export class Globe {
     this.layer.onStatusChange = opts.onStatus;
     this.ribbons = new OrbitRibbonLayer(viewer.scene);
     this.marquee = new MarqueeShapeLayer(viewer.scene);
+    this.stations = new GroundStationLayer(viewer.scene);
     this.selection = new SelectionController(viewer, opts.onSelect);
     opts.onClockReady?.(this.clock);
+
+    // Phase 3 chunk 4B: subscribe to OverlayService so toggles in the
+    // §overlays topbar menu reach every layer.  Sync-emits the current
+    // state on subscribe, so the initial visibility is set immediately.
+    this.overlayUnsub = getSharedOverlays().subscribe((state) => {
+      this.overlayState = state;
+      this.stations?.setVisible(state.stations);
+      // Ribbon + marquee are gated by selection AND the overlay flag;
+      // re-apply selection so a flip to "off" tears them down.
+      this.setRibbonTarget(this.selectedNorad);
+      this.refreshMarquee();
+    });
 
     // Phase 3 chunk 2B: refresh the active orbit ribbon as the user
     // scrubs time.  OrbitRibbonLayer.update() throttles to ~once per
     // 1/30 of the satellite's period, so the cost is bounded.
-    this.ribbonTickUnsub = this.clock.onTick((timeMs) => this.ribbons?.update(timeMs));
+    this.ribbonTickUnsub = this.clock.onTick((timeMs) => {
+      if (this.overlayState.ribbons) this.ribbons?.update(timeMs);
+    });
 
     // Phase 3 chunk 3B: track the selected satellite's marquee shape
     // every clock tick (the worker repaints positions ~4Hz; we read
@@ -151,7 +173,7 @@ export class Globe {
    */
   setRibbonTarget(norad: number | null): void {
     if (!this.ribbons || !this.layer || !this.clock) return;
-    if (norad === null) {
+    if (norad === null || !this.overlayState.ribbons) {
       this.ribbons.hide();
       return;
     }
@@ -177,7 +199,7 @@ export class Globe {
   private refreshMarquee(): void {
     if (!this.marquee) return;
     const norad = this.selectedNorad;
-    if (norad === null) {
+    if (norad === null || !this.overlayState.marquee) {
       this.marquee.hide();
       return;
     }
@@ -191,15 +213,19 @@ export class Globe {
     this.ribbonTickUnsub = null;
     this.marqueeTickUnsub?.();
     this.marqueeTickUnsub = null;
+    this.overlayUnsub?.();
+    this.overlayUnsub = null;
     this.selection?.destroy();
     this.ribbons?.destroy();
     this.marquee?.destroy();
+    this.stations?.destroy();
     this.layer?.destroy();
     this.viewer?.destroy();
     this.viewer = undefined;
     this.layer = undefined;
     this.ribbons = undefined;
     this.marquee = undefined;
+    this.stations = undefined;
     this.selection = undefined;
   }
 }
