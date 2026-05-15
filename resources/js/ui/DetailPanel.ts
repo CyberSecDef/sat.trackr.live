@@ -38,6 +38,9 @@ export class SatDetailPanel extends LitElement {
   @state() private passesError: string | null = null;
   @state() private passesFromCache = false;
   @state() private ribbonOrbits = 1;
+  /** Live elevation/azimuth from observer to selected satellite (degrees), or null if not computable. */
+  @state() private liveElevationDeg: number | null = null;
+  @state() private liveAzimuthDeg: number | null = null;
 
   private liveTimer: number | null = null;
   private lastFetchedNorad: number | null = null;
@@ -369,18 +372,69 @@ export class SatDetailPanel extends LitElement {
     const pos = this.getCurrentPosition(this.norad);
     if (pos === null) {
       this.liveLat = this.liveLon = this.liveAlt = null;
+      this.liveElevationDeg = this.liveAzimuthDeg = null;
       return;
     }
     const carto = Cesium.Cartographic.fromCartesian(pos);
     this.liveLat = Cesium.Math.toDegrees(carto.latitude);
     this.liveLon = Cesium.Math.toDegrees(carto.longitude);
     this.liveAlt = carto.height / 1000; // m → km
+
+    // Phase 3 chunk 6A: live "above horizon" elevation/azimuth from
+    // the observer.  Reuses the same look-angle math the chunk-6A
+    // pass detector uses, but evaluated for "now" only.
+    if (this.observer !== null) {
+      const obsCart = Cesium.Cartesian3.fromDegrees(
+        this.observer.longitude,
+        this.observer.latitude,
+        this.observer.altitudeMeters,
+      );
+      // ENU frame at the observer.  enu = enuTransform.inverse * world.
+      const enuFromWorld = Cesium.Matrix4.inverseTransformation(
+        Cesium.Transforms.eastNorthUpToFixedFrame(obsCart),
+        new Cesium.Matrix4(),
+      );
+      const relWorld = Cesium.Cartesian3.subtract(pos, obsCart, new Cesium.Cartesian3());
+      const enu = Cesium.Matrix4.multiplyByPointAsVector(enuFromWorld, relWorld, new Cesium.Cartesian3());
+      const range = Cesium.Cartesian3.magnitude(enu);
+      this.liveElevationDeg = range > 0 ? Cesium.Math.toDegrees(Math.asin(enu.z / range)) : null;
+      // Azimuth: 0 = north, 90 = east. ENU has x=east, y=north.
+      this.liveAzimuthDeg = Cesium.Math.toDegrees(Math.atan2(enu.x, enu.y));
+      if (this.liveAzimuthDeg < 0) this.liveAzimuthDeg += 360;
+    } else {
+      this.liveElevationDeg = this.liveAzimuthDeg = null;
+    }
   }
 
   private dispatchClose(): void {
     this.dispatchEvent(
       new CustomEvent('panel-close', { bubbles: true, composed: true }),
     );
+  }
+
+  private renderHorizonLine() {
+    if (this.liveElevationDeg === null || this.liveAzimuthDeg === null) {
+      return null;
+    }
+    const above = this.liveElevationDeg > 0;
+    const compass = this.compassFromAzimuth(this.liveAzimuthDeg);
+    return html`
+      <p class="small" style="margin: 0 0 0.5rem; font-family: var(--font-mono); color: var(--color-text);">
+        Above horizon now:
+        <strong style="color: ${above ? 'var(--color-accent)' : 'var(--color-text-dim)'};">
+          ${above ? 'Yes' : 'No'}
+        </strong>
+        <span style="color: var(--color-text-dim);">
+          (${this.liveElevationDeg >= 0 ? '+' : ''}${this.liveElevationDeg.toFixed(1)}° el,
+          ${this.liveAzimuthDeg.toFixed(0)}° ${compass} az)
+        </span>
+      </p>
+    `;
+  }
+
+  private compassFromAzimuth(az: number): string {
+    const dirs = ['N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW'];
+    return dirs[Math.round(az / 45) % 8];
   }
 
   private setRibbonOrbits(orbits: number): void {
@@ -467,6 +521,7 @@ export class SatDetailPanel extends LitElement {
         <h2>§ Visibility from observer
           <span style="color: var(--color-text-dim); text-transform: none; letter-spacing: 0; font-weight: normal;">— ${obsLabel}</span>
         </h2>
+        ${this.renderHorizonLine()}
         <table class="passes" style="width: 100%; border-collapse: collapse; font-family: var(--font-mono); font-size: 0.8rem;">
           <thead>
             <tr style="text-align: left; color: var(--color-text-dim);">
