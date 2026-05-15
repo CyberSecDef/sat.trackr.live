@@ -130,6 +130,10 @@ ingest-ll2: ## Run Launch Library 2 ingester (MODE=upcoming|previous|both, defau
 ingest-spacetrack: ## Run Space-Track TIP ingester for predicted reentries (LIMIT=N, default 100)
 	php bin/console ingest:spacetrack --limit=$(or $(LIMIT),100)
 
+.PHONY: pass-cache-prune
+pass-cache-prune: ## Sweep expired rows from pass_cache (Phase 2 chunk 6)
+	php bin/console pass-cache:prune
+
 .PHONY: health
 health: ## Run the health CLI command (DB ping, row counts, last ingest)
 	php bin/console health

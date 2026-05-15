@@ -16,6 +16,7 @@ use SatTrackr\Cli\Commands\HealthCommand;
 use SatTrackr\Cli\Commands\IngestCelesTrakCommand;
 use SatTrackr\Cli\Commands\IngestLaunchLibraryCommand;
 use SatTrackr\Cli\Commands\IngestSpaceTrackCommand;
+use SatTrackr\Cli\Commands\PruneCacheCommand;
 use SatTrackr\Cli\Commands\IngestSatCatCommand;
 use SatTrackr\Cli\Commands\MakeMigrationCommand;
 use SatTrackr\Cli\Commands\MigrateCommand;
@@ -43,6 +44,8 @@ use SatTrackr\Http\Middleware\ErrorHandlerMiddleware;
 use SatTrackr\Http\Middleware\ETagMiddleware;
 use SatTrackr\Http\Middleware\JsonResponseMiddleware;
 use SatTrackr\Services\FreshnessClassifier;
+use SatTrackr\Services\PassCache;
+use SatTrackr\Services\PassCalculator;
 use SatTrackr\Ingest\CelesTrakClient;
 use SatTrackr\Ingest\CelesTrakIngester;
 use SatTrackr\Ingest\LaunchLibraryClient;
@@ -224,6 +227,14 @@ final class Container
                 logger: $c->get(LoggerInterface::class),
             ),
 
+            // Pass prediction (Phase 2 chunk 6)
+            PassCache::class      => static fn (DIContainer $c) => new PassCache($c->get(Connection::class)),
+            PassCalculator::class => static fn (DIContainer $c) => new PassCalculator(
+                scriptPath: $rootDir . '/bin/sgp4-passes.mjs',
+                nodeBinary: EnvLoader::get('NODE_BINARY', 'node') ?? 'node',
+                logger:     $c->get(LoggerInterface::class),
+            ),
+
             // CLI commands
             MigrateCommand::class         => static fn (DIContainer $c) => new MigrateCommand($c->get(Migrator::class)),
             RollbackCommand::class        => static fn (DIContainer $c) => new RollbackCommand($c->get(Migrator::class)),
@@ -244,6 +255,9 @@ final class Container
             IngestSpaceTrackCommand::class => static fn (DIContainer $c) => new IngestSpaceTrackCommand(
                 $c->get(SpaceTrackIngester::class),
                 $c->get(Connection::class),
+            ),
+            PruneCacheCommand::class      => static fn (DIContainer $c) => new PruneCacheCommand(
+                $c->get(PassCache::class),
             ),
             HealthCommand::class          => static fn (DIContainer $c) => new HealthCommand(
                 $c->get(Connection::class),
