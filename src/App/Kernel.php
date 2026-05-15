@@ -8,11 +8,15 @@ use SatTrackr\Http\Controllers\AutocompleteController;
 use SatTrackr\Http\Controllers\GroupDetailController;
 use SatTrackr\Http\Controllers\GroupListController;
 use SatTrackr\Http\Controllers\GroupTlesController;
+use SatTrackr\Http\Controllers\LaunchDetailController;
+use SatTrackr\Http\Controllers\LaunchSiteListController;
+use SatTrackr\Http\Controllers\RecentLaunchesController;
 use SatTrackr\Http\Controllers\SatelliteDetailController;
 use SatTrackr\Http\Controllers\SatelliteListController;
 use SatTrackr\Http\Controllers\SatelliteTleController;
 use SatTrackr\Http\Controllers\SearchController;
 use SatTrackr\Http\Controllers\SpaShellController;
+use SatTrackr\Http\Controllers\UpcomingLaunchesController;
 use SatTrackr\Http\Controllers\Text\TextCatalogController;
 use SatTrackr\Http\Controllers\Text\TextGroupController;
 use SatTrackr\Http\Controllers\Text\TextGroupsController;
@@ -74,6 +78,12 @@ final class Kernel
             $api->get('/groups/{slug:[a-zA-Z0-9_\-]+}/tles', GroupTlesController::class);
             $api->get('/search', SearchController::class);
             $api->get('/autocomplete', AutocompleteController::class);
+            // Launches (Phase 2 chunk 3) — order matters: more specific
+            // before less specific so {id} doesn't swallow /upcoming etc.
+            $api->get('/launches/upcoming', UpcomingLaunchesController::class);
+            $api->get('/launches/recent', RecentLaunchesController::class);
+            $api->get('/launches/{id:[a-zA-Z0-9_\-]+}', LaunchDetailController::class);
+            $api->get('/launch-sites', LaunchSiteListController::class);
         })
             ->add(JsonResponseMiddleware::class)
             ->add(ETagMiddleware::class);

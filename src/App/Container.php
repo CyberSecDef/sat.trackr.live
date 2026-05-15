@@ -26,11 +26,15 @@ use SatTrackr\Http\Controllers\AutocompleteController;
 use SatTrackr\Http\Controllers\GroupDetailController;
 use SatTrackr\Http\Controllers\GroupListController;
 use SatTrackr\Http\Controllers\GroupTlesController;
+use SatTrackr\Http\Controllers\LaunchDetailController;
+use SatTrackr\Http\Controllers\LaunchSiteListController;
+use SatTrackr\Http\Controllers\RecentLaunchesController;
 use SatTrackr\Http\Controllers\SatelliteDetailController;
 use SatTrackr\Http\Controllers\SatelliteListController;
 use SatTrackr\Http\Controllers\SatelliteTleController;
 use SatTrackr\Http\Controllers\SearchController;
 use SatTrackr\Http\Controllers\SpaShellController;
+use SatTrackr\Http\Controllers\UpcomingLaunchesController;
 use SatTrackr\Http\Middleware\CorsMiddleware;
 use SatTrackr\Http\Middleware\ErrorHandlerMiddleware;
 use SatTrackr\Http\Middleware\ETagMiddleware;
@@ -151,6 +155,12 @@ final class Container
             GroupTlesController::class       => static fn (DIContainer $c) => new GroupTlesController($c->get(Connection::class)),
             SearchController::class          => static fn (DIContainer $c) => new SearchController($c->get(Connection::class)),
             AutocompleteController::class    => static fn (DIContainer $c) => new AutocompleteController($c->get(Connection::class)),
+
+            // Launch endpoints (Phase 2 chunk 3)
+            UpcomingLaunchesController::class => static fn (DIContainer $c) => new UpcomingLaunchesController($c->get(Connection::class)),
+            RecentLaunchesController::class   => static fn (DIContainer $c) => new RecentLaunchesController($c->get(Connection::class)),
+            LaunchDetailController::class     => static fn (DIContainer $c) => new LaunchDetailController($c->get(Connection::class)),
+            LaunchSiteListController::class   => static fn (DIContainer $c) => new LaunchSiteListController($c->get(Connection::class)),
 
             Connection::class => static function () use ($rootDir): Connection {
                 $dbPath = EnvLoader::get('DB_PATH', 'data/sat.db') ?? 'data/sat.db';
