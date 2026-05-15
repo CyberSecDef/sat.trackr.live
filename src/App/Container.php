@@ -35,6 +35,8 @@ use SatTrackr\Http\Controllers\SatelliteListController;
 use SatTrackr\Http\Controllers\SatelliteTleController;
 use SatTrackr\Http\Controllers\SearchController;
 use SatTrackr\Http\Controllers\SpaShellController;
+use SatTrackr\Http\Controllers\ReentryDetailController;
+use SatTrackr\Http\Controllers\ReentryListController;
 use SatTrackr\Http\Controllers\UpcomingLaunchesController;
 use SatTrackr\Http\Middleware\CorsMiddleware;
 use SatTrackr\Http\Middleware\ErrorHandlerMiddleware;
@@ -166,6 +168,10 @@ final class Container
             RecentLaunchesController::class   => static fn (DIContainer $c) => new RecentLaunchesController($c->get(Connection::class)),
             LaunchDetailController::class     => static fn (DIContainer $c) => new LaunchDetailController($c->get(Connection::class)),
             LaunchSiteListController::class   => static fn (DIContainer $c) => new LaunchSiteListController($c->get(Connection::class)),
+
+            // Reentry endpoints (Phase 2 chunk 4)
+            ReentryListController::class      => static fn (DIContainer $c) => new ReentryListController($c->get(Connection::class)),
+            ReentryDetailController::class    => static fn (DIContainer $c) => new ReentryDetailController($c->get(Connection::class)),
 
             Connection::class => static function () use ($rootDir): Connection {
                 $dbPath = EnvLoader::get('DB_PATH', 'data/sat.db') ?? 'data/sat.db';

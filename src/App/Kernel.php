@@ -16,6 +16,8 @@ use SatTrackr\Http\Controllers\SatelliteListController;
 use SatTrackr\Http\Controllers\SatelliteTleController;
 use SatTrackr\Http\Controllers\SearchController;
 use SatTrackr\Http\Controllers\SpaShellController;
+use SatTrackr\Http\Controllers\ReentryDetailController;
+use SatTrackr\Http\Controllers\ReentryListController;
 use SatTrackr\Http\Controllers\UpcomingLaunchesController;
 use SatTrackr\Http\Controllers\Text\TextCatalogController;
 use SatTrackr\Http\Controllers\Text\TextGroupController;
@@ -91,6 +93,10 @@ final class Kernel
             $api->get('/launches/recent', RecentLaunchesController::class);
             $api->get('/launches/{id:[a-zA-Z0-9_\-]+}', LaunchDetailController::class);
             $api->get('/launch-sites', LaunchSiteListController::class);
+            // Reentries (Phase 2 chunk 4) — order matters: literal /upcoming
+            // before {norad}.
+            $api->get('/reentries/upcoming', ReentryListController::class);
+            $api->get('/reentries/{norad:[0-9]+}', ReentryDetailController::class);
         })
             ->add(JsonResponseMiddleware::class)
             ->add(ETagMiddleware::class);
