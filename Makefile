@@ -79,6 +79,10 @@ serve: ## Start PHP server only (serves the production build from public/)
 build: ## Production build of the SPA into public/build/
 	npm run build
 
+.PHONY: build-skybox
+build-skybox: ## Regenerate BSC5 starfield cubemap into public/textures/skybox/ (Phase 3 chunk 1)
+	php bin/build-skybox.php
+
 # -----------------------------------------------------------------------------
 # Database migrations
 # -----------------------------------------------------------------------------
