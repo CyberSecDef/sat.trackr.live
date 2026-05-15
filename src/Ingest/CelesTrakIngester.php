@@ -17,11 +17,15 @@ use Throwable;
  */
 final class CelesTrakIngester
 {
+    public const FORMAT_TLE  = 'tle';
+    public const FORMAT_JSON = 'json';
+
     public function __construct(
         private readonly CelesTrakClient $client,
         private readonly TleParser $parser,
         private readonly Connection $db,
         private readonly LoggerInterface $logger = new NullLogger(),
+        private readonly OmmJsonParser $ommParser = new OmmJsonParser(),
     ) {
     }
 
@@ -29,9 +33,15 @@ final class CelesTrakIngester
      * @param list<string> $groups       Groups to ingest. Empty = all per CelesTrakGroups::all().
      * @param ?callable(string $group, int $records, float $seconds): void $onGroup
      *        Optional progress callback fired after each group completes.
+     * @param 'tle'|'json' $format       Source format.  TLE remains the
+     *        default while we cut over; JSON is forward-compatible past
+     *        the mid-2026 6-digit NORAD transition.
      */
-    public function run(array $groups = [], ?callable $onGroup = null): IngestReport
+    public function run(array $groups = [], ?callable $onGroup = null, string $format = self::FORMAT_TLE): IngestReport
     {
+        if ($format !== self::FORMAT_TLE && $format !== self::FORMAT_JSON) {
+            throw new \InvalidArgumentException("Unknown format '{$format}', expected tle or json");
+        }
         $report = new IngestReport();
         $groups = $groups === [] ? CelesTrakGroups::all() : $groups;
 
@@ -42,10 +52,10 @@ final class CelesTrakIngester
             $groupRecords = 0;
 
             try {
-                $body = $this->client->fetchGroup($group);
+                $records = $format === self::FORMAT_JSON
+                    ? $this->fetchJsonRecords($group)
+                    : $this->fetchTleRecords($group);
             } catch (NotModifiedException $e) {
-                // CelesTrak says nothing changed — count as processed-but-skipped
-                // and move on. Not an error.
                 $report->groupsSkippedNotModified++;
                 $duration = microtime(true) - $groupStart;
                 if ($onGroup !== null) {
@@ -59,15 +69,13 @@ final class CelesTrakIngester
                 continue;
             }
 
-            $records = $this->splitIntoTriplets($body);
-            foreach ($records as [$name, $line1, $line2]) {
+            foreach ($records as $record) {
                 try {
-                    $tle = $this->parser->parse($name, $line1, $line2);
+                    $tle = $format === self::FORMAT_JSON
+                        ? $this->ommParser->parse($record)                                       // @phpstan-ignore-line
+                        : $this->parser->parse($record[0], $record[1], $record[2]);              // @phpstan-ignore-line
                 } catch (InvalidTleException $e) {
-                    // Try to peek the NORAD ID for the reject log, even if parse failed.
-                    $maybeNorad = is_numeric(trim(substr($line1, 2, 5)))
-                        ? (int) trim(substr($line1, 2, 5))
-                        : null;
+                    $maybeNorad = $this->peekNorad($record, $format);
                     $report->recordReject($group, $maybeNorad, $e->getMessage());
                     continue;
                 }
@@ -107,9 +115,44 @@ final class CelesTrakIngester
         for ($i = 0; $i + 2 < $count; $i += 3) {
             $records[] = [$lines[$i], $lines[$i + 1], $lines[$i + 2]];
         }
-        // If $count isn't a multiple of 3, the trailing partial record is dropped
-        // — every well-formed CelesTrak response is a multiple of 3 lines.
         return $records;
+    }
+
+    /** @return list<array{string, string, string}> */
+    private function fetchTleRecords(string $group): array
+    {
+        $body = $this->client->fetchGroup($group);
+        return $this->splitIntoTriplets($body);
+    }
+
+    /** @return list<array<string, mixed>> */
+    private function fetchJsonRecords(string $group): array
+    {
+        return $this->client->fetchGroupJson($group);
+    }
+
+    /** @param array<int|string, mixed> $record */
+    private function peekNorad(array $record, string $format): ?int
+    {
+        if ($format === self::FORMAT_JSON) {
+            $v = $record['NORAD_CAT_ID'] ?? null;
+            if (is_int($v)) {
+                return $v;
+            }
+            if (is_string($v) && ctype_digit($v)) {
+                return (int) $v;
+            }
+            return null;
+        }
+        $line1 = is_string($record[1] ?? null) ? $record[1] : '';
+        if ($line1 === '') {
+            return null;
+        }
+        try {
+            return NoradId::decode(substr($line1, 2, 5));
+        } catch (InvalidTleException) {
+            return null;
+        }
     }
 
     private \PDOStatement $upsertSatellite;

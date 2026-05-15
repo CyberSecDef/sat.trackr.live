@@ -38,6 +38,13 @@ final class IngestCelesTrakCommand extends Command
             InputOption::VALUE_REQUIRED,
             'Ingest only this CelesTrak group slug (e.g. "starlink"). Default: all configured groups.'
         );
+        $this->addOption(
+            'format',
+            'f',
+            InputOption::VALUE_REQUIRED,
+            'Source format: tle (default, legacy) or json (OMM, forward-compatible past 6-digit NORAD transition).',
+            CelesTrakIngester::FORMAT_TLE,
+        );
     }
 
     protected function execute(InputInterface $input, OutputInterface $output): int
@@ -45,10 +52,15 @@ final class IngestCelesTrakCommand extends Command
         $io = new SymfonyStyle($input, $output);
         $group = $input->getOption('group');
         $groups = $group !== null ? [(string) $group] : [];
+        $format = strtolower((string) ($input->getOption('format') ?? CelesTrakIngester::FORMAT_TLE));
+        if (!in_array($format, [CelesTrakIngester::FORMAT_TLE, CelesTrakIngester::FORMAT_JSON], true)) {
+            $io->error("Invalid --format '{$format}'. Use tle or json.");
+            return Command::FAILURE;
+        }
 
         $io->title($group !== null
-            ? "CelesTrak ingest — group '{$group}'"
-            : 'CelesTrak ingest — all configured groups');
+            ? "CelesTrak ingest — group '{$group}' (FORMAT={$format})"
+            : "CelesTrak ingest — all configured groups (FORMAT={$format})");
 
         try {
             $report = $this->ingester->run(
@@ -60,7 +72,8 @@ final class IngestCelesTrakCommand extends Command
                         $records,
                         $seconds
                     ));
-                }
+                },
+                $format,
             );
         } catch (Throwable $e) {
             $io->error('Ingest aborted: ' . $e->getMessage());
