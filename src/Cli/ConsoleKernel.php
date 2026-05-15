@@ -7,6 +7,7 @@ namespace SatTrackr\Cli;
 use DI\Container as DIContainer;
 use SatTrackr\Cli\Commands\HealthCommand;
 use SatTrackr\Cli\Commands\IngestCelesTrakCommand;
+use SatTrackr\Cli\Commands\IngestLaunchLibraryCommand;
 use SatTrackr\Cli\Commands\IngestSatCatCommand;
 use SatTrackr\Cli\Commands\MakeMigrationCommand;
 use SatTrackr\Cli\Commands\MigrateCommand;
@@ -26,6 +27,7 @@ final class ConsoleKernel
         $app->add($container->get(MakeMigrationCommand::class));
         $app->add($container->get(IngestCelesTrakCommand::class));
         $app->add($container->get(IngestSatCatCommand::class));
+        $app->add($container->get(IngestLaunchLibraryCommand::class));
         $app->add($container->get(HealthCommand::class));
 
         return $app;

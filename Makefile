@@ -122,6 +122,10 @@ ingest-satcat-group: ## Ingest a single SATCAT group (GROUP=starlink)
 	@if [ -z "$(GROUP)" ]; then echo "Usage: make ingest-satcat-group GROUP=starlink"; exit 1; fi
 	php bin/console ingest:satcat --group=$(GROUP)
 
+.PHONY: ingest-ll2
+ingest-ll2: ## Run Launch Library 2 ingester (MODE=upcoming|previous|both, default both)
+	php bin/console ingest:ll2 --mode=$(or $(MODE),both)
+
 .PHONY: health
 health: ## Run the health CLI command (DB ping, row counts, last ingest)
 	php bin/console health
