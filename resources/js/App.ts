@@ -96,6 +96,7 @@ export class SatApp extends LitElement {
     const globe = this.globeRef.value?.globe;
     globe?.layer?.setHighlight(norad);
     globe?.setRibbonTarget(norad);
+    globe?.setMarqueeTarget(norad);
     if (fly && norad !== null) {
       globe?.flyToSatellite(norad);
     }

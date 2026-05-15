@@ -43,6 +43,8 @@ export class PointPrimitiveLayer {
   private positionByNorad = new Map<number, Cesium.Cartesian3>();
   /** norad_id → raw TLE strings (used by chunk-2 OrbitRibbonLayer to rebuild satrecs) */
   private tleByNorad = new Map<number, { line1: string; line2: string }>();
+  /** norad_id → display name (used by chunk-3 marquee registry name-prefix matcher) */
+  private nameByNorad = new Map<number, string>();
   private highlighted: number | null = null;
   private unsubscribeTick: (() => void) | null = null;
   private lastPropagatedClockMs = 0;
@@ -77,6 +79,7 @@ export class PointPrimitiveLayer {
     this.typeByNorad.clear();
     this.positionByNorad.clear();
     this.tleByNorad.clear();
+    this.nameByNorad.clear();
     this.highlighted = null;
 
     for (let i = 0; i < records.length; i++) {
@@ -93,6 +96,7 @@ export class PointPrimitiveLayer {
       this.indexByNorad.set(r.norad_id, i);
       this.typeByNorad.set(r.norad_id, type);
       this.tleByNorad.set(r.norad_id, { line1: r.line1, line2: r.line2 });
+      this.nameByNorad.set(r.norad_id, r.name);
     }
     this.count = records.length;
 
@@ -110,6 +114,11 @@ export class PointPrimitiveLayer {
    */
   getTle(norad: number): { line1: string; line2: string } | null {
     return this.tleByNorad.get(norad) ?? null;
+  }
+
+  /** Display name for the given NORAD, if loaded.  Used by chunk-3 marquee registry. */
+  getName(norad: number): string | null {
+    return this.nameByNorad.get(norad) ?? null;
   }
 
   /**

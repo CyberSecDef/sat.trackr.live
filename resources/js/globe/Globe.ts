@@ -6,6 +6,7 @@ import { twoline2satrec } from 'satellite.js';
 import { getGroupTles, ApiError } from '../api/client';
 import { Clock } from '../time/Clock';
 import { createImageryProvider } from './imagery';
+import { MarqueeShapeLayer } from './MarqueeShapeLayer';
 import { OrbitRibbonLayer } from './OrbitRibbonLayer';
 import { PointPrimitiveLayer } from './PointPrimitiveLayer';
 import { SelectionController } from './SelectionController';
@@ -22,9 +23,12 @@ export class Globe {
   private viewer?: Cesium.Viewer;
   public layer?: PointPrimitiveLayer;
   public ribbons?: OrbitRibbonLayer;
+  public marquee?: MarqueeShapeLayer;
   public selection?: SelectionController;
   public clock?: Clock;
   private ribbonTickUnsub: (() => void) | null = null;
+  private marqueeTickUnsub: (() => void) | null = null;
+  private selectedNorad: number | null = null;
 
   async init(
     container: HTMLElement,
@@ -88,6 +92,7 @@ export class Globe {
     this.layer = new PointPrimitiveLayer(viewer.scene, this.clock);
     this.layer.onStatusChange = opts.onStatus;
     this.ribbons = new OrbitRibbonLayer(viewer.scene);
+    this.marquee = new MarqueeShapeLayer(viewer.scene);
     this.selection = new SelectionController(viewer, opts.onSelect);
     opts.onClockReady?.(this.clock);
 
@@ -95,6 +100,12 @@ export class Globe {
     // scrubs time.  OrbitRibbonLayer.update() throttles to ~once per
     // 1/30 of the satellite's period, so the cost is bounded.
     this.ribbonTickUnsub = this.clock.onTick((timeMs) => this.ribbons?.update(timeMs));
+
+    // Phase 3 chunk 3B: track the selected satellite's marquee shape
+    // every clock tick (the worker repaints positions ~4Hz; we read
+    // back the cached ECEF and reposition the primitive).  No-op
+    // when nothing is selected or when the camera is far from it.
+    this.marqueeTickUnsub = this.clock.onTick(() => this.refreshMarquee());
 
     opts.onStatus('Loading satellite catalog…');
     try {
@@ -153,16 +164,42 @@ export class Globe {
     this.ribbons.show(satrec, this.clock.getTimeMs());
   }
 
+  /** Track the selected NORAD for the marquee model overlay. */
+  setMarqueeTarget(norad: number | null): void {
+    this.selectedNorad = norad;
+    if (norad === null) {
+      this.marquee?.hide();
+      return;
+    }
+    this.refreshMarquee();
+  }
+
+  private refreshMarquee(): void {
+    if (!this.marquee) return;
+    const norad = this.selectedNorad;
+    if (norad === null) {
+      this.marquee.hide();
+      return;
+    }
+    const position = this.layer?.getPosition(norad) ?? null;
+    const name     = this.layer?.getName(norad) ?? null;
+    this.marquee.update(norad, name, position);
+  }
+
   destroy(): void {
     this.ribbonTickUnsub?.();
     this.ribbonTickUnsub = null;
+    this.marqueeTickUnsub?.();
+    this.marqueeTickUnsub = null;
     this.selection?.destroy();
     this.ribbons?.destroy();
+    this.marquee?.destroy();
     this.layer?.destroy();
     this.viewer?.destroy();
     this.viewer = undefined;
     this.layer = undefined;
     this.ribbons = undefined;
+    this.marquee = undefined;
     this.selection = undefined;
   }
 }
