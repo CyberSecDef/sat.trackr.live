@@ -36,8 +36,10 @@ final class TleParser
         $this->validateChecksum($line1);
         $this->validateChecksum($line2);
 
-        $noradId1 = (int) trim(substr($line1, 2, 5));
-        $noradId2 = (int) trim(substr($line2, 2, 5));
+        // Alpha-5 aware: handles both 5-digit decimal and the post-2026
+        // alphanumeric encoding (A0000-Z9999 = 100000-339999).
+        $noradId1 = NoradId::decode(substr($line1, 2, 5));
+        $noradId2 = NoradId::decode(substr($line2, 2, 5));
         if ($noradId1 !== $noradId2) {
             throw new InvalidTleException(
                 "NORAD ID mismatch between lines: {$noradId1} vs {$noradId2}"
