@@ -181,6 +181,10 @@ test-php: ## PHPUnit only
 test-js: ## Vitest only
 	npm run test
 
+.PHONY: test-e2e
+test-e2e: ## Playwright smoke specs (Phase 3 chunk 6C); needs `npx playwright install chromium` once
+	npx playwright test
+
 .PHONY: ci
 ci: lint analyze typecheck test ## Full quality gate (what CI would run)
 

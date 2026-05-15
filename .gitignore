@@ -31,6 +31,11 @@ composer.phar
 /.php-cs-fixer.cache
 /.phpstan.cache/
 
+# Playwright
+/test-results/
+/playwright-report/
+/playwright/.cache/
+
 # IDE / editor
 /.idea/
 /.vscode/
