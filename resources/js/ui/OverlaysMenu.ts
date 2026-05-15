@@ -31,8 +31,8 @@ const OVERLAYS: ReadonlyArray<OverlayMeta> = [
   {
     key: 'lightPollution',
     glyph: '☀',
-    label: 'Light pollution (Phase 3 chunk 5)',
-    description: 'Coming next chunk: VIIRS night-lights raster overlay',
+    label: 'Light pollution',
+    description: 'NASA VIIRS 2012 city-lights raster — visible on the night side only, lazy-loaded',
   },
 ];
 

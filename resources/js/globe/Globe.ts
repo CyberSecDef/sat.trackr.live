@@ -7,6 +7,7 @@ import { getGroupTles, ApiError } from '../api/client';
 import { Clock } from '../time/Clock';
 import { createImageryProvider } from './imagery';
 import { GroundStationLayer } from './GroundStationLayer';
+import { LightPollutionLayer } from './LightPollutionLayer';
 import { MarqueeShapeLayer } from './MarqueeShapeLayer';
 import { OrbitRibbonLayer } from './OrbitRibbonLayer';
 import { PointPrimitiveLayer } from './PointPrimitiveLayer';
@@ -27,6 +28,7 @@ export class Globe {
   public ribbons?: OrbitRibbonLayer;
   public marquee?: MarqueeShapeLayer;
   public stations?: GroundStationLayer;
+  public lightPollution?: LightPollutionLayer;
   public selection?: SelectionController;
   public clock?: Clock;
   private ribbonTickUnsub: (() => void) | null = null;
@@ -101,6 +103,7 @@ export class Globe {
     this.ribbons = new OrbitRibbonLayer(viewer.scene);
     this.marquee = new MarqueeShapeLayer(viewer.scene);
     this.stations = new GroundStationLayer(viewer.scene);
+    this.lightPollution = new LightPollutionLayer(viewer);
     this.selection = new SelectionController(viewer, opts.onSelect);
     opts.onClockReady?.(this.clock);
 
@@ -110,6 +113,7 @@ export class Globe {
     this.overlayUnsub = getSharedOverlays().subscribe((state) => {
       this.overlayState = state;
       this.stations?.setVisible(state.stations);
+      this.lightPollution?.setVisible(state.lightPollution);
       // Ribbon + marquee are gated by selection AND the overlay flag;
       // re-apply selection so a flip to "off" tears them down.
       this.setRibbonTarget(this.selectedNorad);
@@ -219,6 +223,7 @@ export class Globe {
     this.ribbons?.destroy();
     this.marquee?.destroy();
     this.stations?.destroy();
+    this.lightPollution?.destroy();
     this.layer?.destroy();
     this.viewer?.destroy();
     this.viewer = undefined;
@@ -226,6 +231,7 @@ export class Globe {
     this.ribbons = undefined;
     this.marquee = undefined;
     this.stations = undefined;
+    this.lightPollution = undefined;
     this.selection = undefined;
   }
 }
