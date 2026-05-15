@@ -10,7 +10,7 @@ Part of the **trackr.live family** alongside [trackr.live](https://trackr.live) 
 
 ## Status
 
-🚧 **Phase 2 in progress.** Phase 1 (all 9 chunks) is complete — full SPA with globe + detail panel + time scrubbing + text-only fallback at `/text`. Phase 2 chunks 1-6 are live: SATCAT enrichment populates 98.5% of the catalog, the detail panel surfaces the new fields, the Launch Library 2 ingester powers `/text/launches` + four launch JSON endpoints, the Space-Track TIP ingester feeds `/text/decays` + two reentry JSON endpoints, the `📍` topbar pill stores an observer location, and the chunk-6 pass-prediction pipeline (Node SGP4 subprocess + 6h SQLite cache) feeds `/api/v1/satellites/{norad}/passes` and the new `§ Visibility from observer` section in the detail panel. Chunk 7 remaining (FORMAT=JSON migration + Phase 2 polish).
+✅ **Phase 2 complete.** All 16 chunks across phases 1-2 are live: full SPA with globe + detail panel + time scrubbing + text-only fallback at `/text`; SATCAT enrichment populates 98.5% of the catalog; the Launch Library 2 ingester powers `/text/launches` + four launch JSON endpoints; the Space-Track TIP ingester feeds `/text/decays` + two reentry JSON endpoints; the `📍` topbar pill stores an observer location; the pass-prediction pipeline (Node SGP4 subprocess + 6h SQLite cache) feeds `/api/v1/satellites/{norad}/passes` and a `§ Visibility from observer` section in the detail panel; and the CelesTrak ingest path now supports `FORMAT=JSON` (OMM) with Alpha-5 NORAD encoding for the mid-2026 6-digit transition. **Phase 3 next** — see [`docs/phase3.md`](docs/phase3.md) for the showcase-visuals outline.
 
 ### Phase 1 — Foundation MVP (✅ complete)
 
@@ -26,7 +26,7 @@ Part of the **trackr.live family** alongside [trackr.live](https://trackr.live) 
 | 7. Time scrubbing | ✅ done | `<sat-timeline>` with ±7d slider + yellow bands beyond ±48h, play/pause, 5 speed buttons, Now reset; `Clock` facade drives both worker + UI |
 | 8. Text-only catalog `/text` | ✅ done | 4 PHP routes (catalog list / satellite detail / groups / search) — server-rendered HTML, no JS required, sitemap-friendly. Self-contained inline CSS. SPA top-bar links to it. |
 
-### Phase 2 — Data depth (🚧 in progress)
+### Phase 2 — Data depth (✅ complete)
 
 | Chunk | Status | What it adds |
 |---|---|---|
@@ -36,7 +36,11 @@ Part of the **trackr.live family** alongside [trackr.live](https://trackr.live) 
 | 4. Space-Track ingester + reentries view | ✅ done | `make ingest-spacetrack` pulls TIP messages from www.space-track.org via cookie-jar session in ~1.2s; UPSERT keyed on `(norad_id, source)`; TIPs for objects we don't catalog are skipped (44/50 in the first real run). Two JSON endpoints — `GET /api/v1/reentries/upcoming?within_hours=N` (default 168, max 720) + `GET /api/v1/reentries/{norad}` — and a server-rendered `/text/decays` mirror with countdowns + tri-color risk badge. SPA topbar + text nav grow `§ decays`. **110 PHP / 31 JS passing.** |
 | 5. Observer location handling | ✅ done | New `<sat-observer-pill>` lives in the topbar between search and the theme switcher; collapses to `📍 set location` when unset, `📍 short-label (lat°, lon°)` once chosen. Three input modes: 🛰 use my location (geolocation), 🌍 city search (Nominatim, debounced 350ms + rate-limited 1 req/s), ⌖ manual lat/lon. Persisted to localStorage as `sat:observer`; survives reload + discards malformed JSON cleanly. Subscriber-friendly so chunk 6 can react. **110 PHP / 44 JS passing** (+13 new vitest specs). |
 | 6. Pass predictions (calc + UI) | ✅ done | Pure-function pass detector (`resources/js/passes/computePasses.ts`) walks SGP4 elevation curves and refines rise/peak/set with 12-step bisection. Mirrored in `bin/sgp4-passes.mjs` Node CLI; PHP `PassCalculator` shells out via `proc_open` with a 15s timeout. `PassCache` (6h TTL keyed on NORAD + observer-3dp + day) keeps repeats under ~30ms. `GET /api/v1/satellites/{norad}/passes?lat&lon` (cache 5min + swr=10min) and a new `§ Visibility from observer` section in the detail panel that fetches the next 5 passes when the 📍 pill has a location set. `make pass-cache-prune` sweeps expired rows. **124 PHP / 49 JS passing.** *Deferred to chunk 7: N2YO magnitude enrichment + browser-worker compute path.* |
-| 7. CelesTrak FORMAT=JSON migration + Phase 2 polish | ⏳ pending | Switch GP ingest from FORMAT=TLE to FORMAT=JSON before mid-2026 6-digit NORAD ID transition; cron-entries doc; README closes Phase 2 |
+| 7. CelesTrak FORMAT=JSON migration + Phase 2 polish | ✅ done | `NoradId::encode/decode` Alpha-5 helper (`A0000`–`Z9999` = 100000–339999, `I` and `O` skipped) so `TleParser` keeps parsing once CelesTrak hits 6-digit NORAD IDs (~mid-2026). New `OmmJsonParser` consumes CelesTrak `FORMAT=JSON` records and produces the same `ParsedTle` value object the TLE path emits — including byte-perfect synthesized line1/line2 strings via `TleEmitter` so `satellite.js`, the SPA worker, and the copy-to-clipboard panel keep working unchanged. `bin/console ingest:celestrak --format=json` flips the source format end-to-end (TLE remains the default while we cut over). Phase 3 outline lands at `docs/phase3.md`. **149 PHP / 49 JS passing.** *Deferred to Phase 3 / 4: N2YO magnitude enrichment, browser-worker compute_passes path, "above horizon now?" line in §Visibility — see `docs/phase3.md` § V.* |
+
+### Phase 3 — Showcase visuals (⏳ next)
+
+See [`docs/phase3.md`](docs/phase3.md) for the goals/acceptance/open-questions/chunk plan. TL;DR: day/night terminator polish, sun/moon/stars, selected-object orbit ribbons, glTF models for ISS / Tiangong / Hubble, ground stations + sensor cones, light pollution overlay.
 
 See [`docs/phase1.md`](docs/phase1.md) and [`docs/phase2.md`](docs/phase2.md) for design details, and [`req_spec.md`](req_spec.md) for the long-form vision (sections §1–§30).
 
@@ -138,7 +142,7 @@ make pass-cache-prune                 # Sweep expired pass-cache rows (Phase 2 c
 make health                           # PHP / pdo_sqlite / DB / per-table row counts
 
 # Quality gates
-make test                             # 124 PHP + 49 JS = 173 cases passing
+make test                             # 149 PHP + 49 JS = 198 cases passing
 make lint / make analyze / make typecheck / make ci
 ```
 
@@ -184,7 +188,7 @@ Default response headers: `Content-Type: application/json; charset=utf-8`, `Cach
 
 ### CelesTrak ingest details
 
-- **Format:** we fetch `FORMAT=TLE` (3-line sets). When NORAD IDs cross 6 digits — CelesTrak forecasts ~mid-2026 — the legacy TLE format breaks and we'll need to switch to `FORMAT=JSON` (OMM). Tracked as a Phase 2 migration item.
+- **Format:** the ingester defaults to `FORMAT=TLE` (3-line sets) but accepts `--format=json` to consume `FORMAT=JSON` (OMM) records via `OmmJsonParser`. When NORAD IDs cross 6 digits (~mid-2026) the JSON path stays valid; the TLE path also keeps working via `NoradId::encode` / `NoradId::decode` Alpha-5 encoding (`A0000`–`Z9999` = 100000–339999). Both paths produce the same `ParsedTle` shape; `OmmJsonParser` synthesizes byte-perfect `line1`/`line2` strings via `TleEmitter` so the rest of the system (satellite.js, copy-to-clipboard, raw-data panel) doesn't care which path served the data.
 - **Group list:** 38 groups configured in `src/Ingest/CelesTrakGroups.php` covering Special-Interest, Weather/Earth-Obs, Communications, Navigation, Scientific, and Miscellaneous. Many objects appear in multiple groups; the upsert-by-norad_id logic dedupes naturally.
 - **Idempotency:** CelesTrak returns HTTP 403 with body "GP data has not updated since…" when you re-fetch a group it considers unchanged. We treat that as a polite skip — group counted but no records processed. INSERT OR IGNORE on `tle_history` ensures re-ingesting the same TLE adds no row.
 - **Cron:** the schedule lands on prod once you wire DreamHost cron to `cd ~/sat.trackr.live && make ingest >> storage/logs/cron.log 2>&1` every 6 hours per `req_spec.md` §23.
