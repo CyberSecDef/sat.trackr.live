@@ -8,6 +8,7 @@ use PHPUnit\Framework\TestCase;
 use SatTrackr\Database\Connection;
 use SatTrackr\Database\Migrator;
 use SatTrackr\Http\Controllers\Text\TextCatalogController;
+use SatTrackr\Http\Controllers\Text\TextDecaysController;
 use SatTrackr\Http\Controllers\Text\TextGroupController;
 use SatTrackr\Http\Controllers\Text\TextGroupsController;
 use SatTrackr\Http\Controllers\Text\TextLaunchDetailController;
@@ -91,6 +92,14 @@ final class TextRoutesTest extends TestCase
                     VALUES
                       ('uuid-up', 'Falcon 9 | Starlink Future', '{$future}',  'GO',      'SpaceX', 'Falcon 9', 80, 'Starlink Future', 'Communications', 'LEO', 'SpaceX', NULL, NULL, NULL, '[]',           '{$now}'),
                       ('uuid-rec','Atlas V | Recent USSF',      '{$past20d}', 'SUCCESS', 'ULA',    'Atlas V',  80, 'USSF Mission',    'Government',     'GTO', 'USSF',   NULL, NULL, NULL, '[25544,44713]', '{$now}')");
+
+        // Phase 2 chunk 4D fixtures: a single TIP-sourced reentry for ISS
+        // (within the 7-day default window).
+        $soon = (new \DateTimeImmutable('now', new \DateTimeZone('UTC')))->modify('+3 days')->format('Y-m-d\TH:i:s\Z');
+        $pdo->exec("INSERT INTO reentries
+                    (norad_id, predicted_decay, confidence_window_hours, source, risk_score, raw_message, created_at, updated_at)
+                    VALUES
+                      (25544, '{$soon}', 6.0, 'SPACE_TRACK_TIP', 4.2, '{\"NORAD_CAT_ID\":\"25544\"}', '{$now}', '{$now}')");
     }
 
     public function testCatalogListReturns200WithBothSatellites(): void
@@ -237,6 +246,31 @@ final class TextRoutesTest extends TestCase
             '/text/launches/no-such-id',
             ['id' => 'no-such-id']
         );
+    }
+
+    public function testDecaysListsUpcomingReentryWithCountdownAndRiskBadge(): void
+    {
+        $body = $this->invoke(
+            new TextDecaysController($this->db, $this->renderer),
+            '/text/decays'
+        );
+        $this->assertStringContainsString('Predicted reentries', $body);
+        $this->assertStringContainsString('ISS (ZARYA)', $body);
+        $this->assertStringContainsString('NORAD 25544', $body);
+        $this->assertStringContainsString('±6.0h', $body);
+        $this->assertStringContainsString('badge--high', $body); // 4.2 >= 4 → high
+        $this->assertStringContainsString('T-', $body);          // countdown rendered
+    }
+
+    public function testDecaysShowsEmptyMessageOutsideWindow(): void
+    {
+        // Narrow the window to 1 hour: the +3-day fixture should be excluded.
+        $body = $this->invoke(
+            new TextDecaysController($this->db, $this->renderer),
+            '/text/decays?within_hours=1'
+        );
+        $this->assertStringContainsString('No reentries predicted', $body);
+        $this->assertStringNotContainsString('ISS (ZARYA)', $body);
     }
 
     public function testSearchByFtsNameMatch(): void

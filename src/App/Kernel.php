@@ -20,6 +20,7 @@ use SatTrackr\Http\Controllers\ReentryDetailController;
 use SatTrackr\Http\Controllers\ReentryListController;
 use SatTrackr\Http\Controllers\UpcomingLaunchesController;
 use SatTrackr\Http\Controllers\Text\TextCatalogController;
+use SatTrackr\Http\Controllers\Text\TextDecaysController;
 use SatTrackr\Http\Controllers\Text\TextGroupController;
 use SatTrackr\Http\Controllers\Text\TextGroupsController;
 use SatTrackr\Http\Controllers\Text\TextLaunchDetailController;
@@ -75,6 +76,8 @@ final class Kernel
         $app->get('/text/launches', TextLaunchListController::class);
         $app->get('/text/launches/recent', TextLaunchListController::class);
         $app->get('/text/launches/{id:[a-fA-F0-9-]+}', TextLaunchDetailController::class);
+        // Reentries text view (Phase 2 chunk 4D)
+        $app->get('/text/decays', TextDecaysController::class);
 
         // API routes — Slim binds the group closure to its CallableResolver,
         // which requires a non-static closure (it can't bind $this to a static).

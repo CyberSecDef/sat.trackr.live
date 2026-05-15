@@ -208,6 +208,9 @@ $description = $description ?? 'Text catalog of every tracked satellite in Earth
     }
     .badge--type { color: var(--accent); border-color: currentColor; }
     .badge--orbit { color: var(--text-muted); }
+    .badge--low  { color: #6db96d; border-color: currentColor; }
+    .badge--mid  { color: #d6a861; border-color: currentColor; }
+    .badge--high { color: #d66161; border-color: currentColor; }
 
     /* ─── Pagination ────────────────────────────────────────────── */
     .pagination {
@@ -310,6 +313,7 @@ $description = $description ?? 'Text catalog of every tracked satellite in Earth
       <a href="/text" class="<?= $activeNav === 'catalog' ? 'active' : '' ?>">§ catalog</a>
       <a href="/text/groups" class="<?= $activeNav === 'groups' ? 'active' : '' ?>">§ groups</a>
       <a href="/text/launches" class="<?= $activeNav === 'launches' ? 'active' : '' ?>">§ launches</a>
+      <a href="/text/decays" class="<?= $activeNav === 'decays' ? 'active' : '' ?>">§ decays</a>
       <a href="/text/search" class="<?= $activeNav === 'search' ? 'active' : '' ?>">§ search</a>
       <a href="/" class="globe-link">🌐 globe view</a>
     </nav>
