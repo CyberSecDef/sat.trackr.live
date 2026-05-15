@@ -38,9 +38,18 @@ Part of the **trackr.live family** alongside [trackr.live](https://trackr.live) 
 | 6. Pass predictions (calc + UI) | ✅ done | Pure-function pass detector (`resources/js/passes/computePasses.ts`) walks SGP4 elevation curves and refines rise/peak/set with 12-step bisection. Mirrored in `bin/sgp4-passes.mjs` Node CLI; PHP `PassCalculator` shells out via `proc_open` with a 15s timeout. `PassCache` (6h TTL keyed on NORAD + observer-3dp + day) keeps repeats under ~30ms. `GET /api/v1/satellites/{norad}/passes?lat&lon` (cache 5min + swr=10min) and a new `§ Visibility from observer` section in the detail panel that fetches the next 5 passes when the 📍 pill has a location set. `make pass-cache-prune` sweeps expired rows. **124 PHP / 49 JS passing.** *Deferred to chunk 7: N2YO magnitude enrichment + browser-worker compute path.* |
 | 7. CelesTrak FORMAT=JSON migration + Phase 2 polish | ✅ done | `NoradId::encode/decode` Alpha-5 helper (`A0000`–`Z9999` = 100000–339999, `I` and `O` skipped) so `TleParser` keeps parsing once CelesTrak hits 6-digit NORAD IDs (~mid-2026). New `OmmJsonParser` consumes CelesTrak `FORMAT=JSON` records and produces the same `ParsedTle` value object the TLE path emits — including byte-perfect synthesized line1/line2 strings via `TleEmitter` so `satellite.js`, the SPA worker, and the copy-to-clipboard panel keep working unchanged. `bin/console ingest:celestrak --format=json` flips the source format end-to-end (TLE remains the default while we cut over). Phase 3 outline lands at `docs/phase3.md`. **149 PHP / 49 JS passing.** *Deferred to Phase 3 / 4: N2YO magnitude enrichment, browser-worker compute_passes path, "above horizon now?" line in §Visibility — see `docs/phase3.md` § V.* |
 
-### Phase 3 — Showcase visuals (⏳ next)
+### Phase 3 — Showcase visuals (🚧 in progress)
 
-See [`docs/phase3.md`](docs/phase3.md) for the goals/acceptance/open-questions/chunk plan. TL;DR: day/night terminator polish, sun/moon/stars, selected-object orbit ribbons, glTF models for ISS / Tiangong / Hubble, ground stations + sensor cones, light pollution overlay.
+| Chunk | Status | What it adds |
+|---|---|---|
+| 1. Terminator + sun/moon/stars | ✅ done | `bin/build-skybox.php` fetches the Bright Star Catalog 5 (~9100 stars), projects them onto an inertial-frame cubemap, and emits 6 magnitude-graded PNG faces at `public/textures/skybox/` (~120KB total). Globe.ts replaces Cesium's default skybox with that BSC5 cubemap and explicitly enables sun + moon. Terminator already moved with the time-scrub from Phase 1's `enableLighting = true`; this chunk delivers the visible night-side starfield. Bundle: 89.17 → 89.46 KB gzipped main (skybox is asset-loaded at runtime). **149 PHP / 49 JS passing.** |
+| 2. Selected-object orbit ribbons | ⏳ pending | Trail generator (±1 orbit), `Cesium.PolylineCollection`, fade shader |
+| 3. 3D models (ISS / Tiangong / Hubble / Dragon / Cygnus / Soyuz / Starlink) | ⏳ pending | Self-hosted glTF + LOD swap |
+| 4. Ground stations + sensor cones | ⏳ pending | ~50 manually curated stations + `§ overlays` topbar menu |
+| 5. Light pollution overlay | ⏳ pending | VIIRS night-lights raster (~40MB lazy) |
+| 6. Polish + Playwright + Phase 4 outline | ⏳ pending | Bundle audit, "above horizon now?" line, visual-diff baselines, drafts `docs/phase4.md` |
+
+See [`docs/phase3.md`](docs/phase3.md) for the locked plan, decisions, dependencies, and risk.
 
 See [`docs/phase1.md`](docs/phase1.md) and [`docs/phase2.md`](docs/phase2.md) for design details, and [`req_spec.md`](req_spec.md) for the long-form vision (sections §1–§30).
 
@@ -139,6 +148,7 @@ make ingest-satcat-group GROUP=starlink  # just one SATCAT group
 make ingest-ll2                       # Launch Library 2 — 50 upcoming + 100 previous launches in ~4s (Phase 2 chunk 3)
 make ingest-spacetrack                # Space-Track TIP — predicted reentries in ~1.2s (Phase 2 chunk 4)
 make pass-cache-prune                 # Sweep expired pass-cache rows (Phase 2 chunk 6)
+make build-skybox                     # Regenerate BSC5 starfield cubemap into public/textures/skybox/ (Phase 3 chunk 1)
 make health                           # PHP / pdo_sqlite / DB / per-table row counts
 
 # Quality gates
@@ -280,6 +290,7 @@ Run `make` with no arguments to print this list. Highlights:
 | `make dev` | PHP + Vite dev servers in parallel (Ctrl-C kills both) |
 | `make serve` | PHP server only, serves the production-built SPA |
 | `make build` | production bundle into `public/build/` |
+| `make build-skybox` | regenerate BSC5 starfield cubemap into `public/textures/skybox/` (Phase 3 chunk 1) |
 | `make migrate` | apply migrations (11 total) |
 | `make ingest` | run CelesTrak GP ingester |
 | `make ingest-satcat` | enrich catalog from CelesTrak SATCAT (Phase 2 chunk 1) |
