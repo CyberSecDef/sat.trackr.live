@@ -1,8 +1,9 @@
 import { LitElement, html, css, nothing } from 'lit';
 import { customElement, property, state } from 'lit/decorators.js';
 import * as Cesium from 'cesium';
-import { ApiError, getSatelliteDetail } from '../api/client';
-import type { SatelliteDetail } from '../api/types';
+import { ApiError, getSatelliteDetail, getSatellitePasses } from '../api/client';
+import type { PassRecord, SatelliteDetail } from '../api/types';
+import { getSharedObserver, type Observer } from '../observer/Observer';
 import './FreshnessBadge';
 
 /**
@@ -31,9 +32,17 @@ export class SatDetailPanel extends LitElement {
   @state() private liveLat: number | null = null;
   @state() private liveLon: number | null = null;
   @state() private liveAlt: number | null = null;
+  @state() private observer: Observer | null = null;
+  @state() private passes: PassRecord[] = [];
+  @state() private passesLoading = false;
+  @state() private passesError: string | null = null;
+  @state() private passesFromCache = false;
 
   private liveTimer: number | null = null;
   private lastFetchedNorad: number | null = null;
+  private observerUnsub: (() => void) | null = null;
+  private lastPassKey = '';
+  private passesToken = 0;
 
   static styles = css`
     :host {
@@ -241,12 +250,18 @@ export class SatDetailPanel extends LitElement {
   connectedCallback(): void {
     super.connectedCallback();
     document.addEventListener('keydown', this.handleKeydown);
+    this.observerUnsub = getSharedObserver().subscribe((o) => {
+      this.observer = o;
+      void this.maybeLoadPasses();
+    });
   }
 
   disconnectedCallback(): void {
     super.disconnectedCallback();
     document.removeEventListener('keydown', this.handleKeydown);
     this.stopLiveTimer();
+    this.observerUnsub?.();
+    this.observerUnsub = null;
   }
 
   willUpdate(changed: Map<string, unknown>): void {
@@ -254,10 +269,52 @@ export class SatDetailPanel extends LitElement {
       this.toggleAttribute('open', this.norad !== null);
       if (this.norad !== null && this.norad !== this.lastFetchedNorad) {
         void this.loadDetail(this.norad);
+        void this.maybeLoadPasses();
       } else if (this.norad === null) {
         this.detail = null;
         this.lastFetchedNorad = null;
         this.stopLiveTimer();
+        this.passes = [];
+        this.passesError = null;
+        this.lastPassKey = '';
+      }
+    }
+  }
+
+  private async maybeLoadPasses(): Promise<void> {
+    if (this.norad === null || this.observer === null) {
+      this.passes = [];
+      this.passesError = null;
+      this.lastPassKey = '';
+      return;
+    }
+    const key = `${this.norad}:${this.observer.latitude.toFixed(3)}:${this.observer.longitude.toFixed(3)}`;
+    if (key === this.lastPassKey && this.passes.length > 0) {
+      return;
+    }
+    this.lastPassKey = key;
+    const myToken = ++this.passesToken;
+    this.passesLoading = true;
+    this.passesError = null;
+    try {
+      const response = await getSatellitePasses(this.norad, {
+        lat: this.observer.latitude,
+        lon: this.observer.longitude,
+        alt: this.observer.altitudeMeters,
+        days: 7,
+      });
+      if (myToken !== this.passesToken) return;
+      this.passes = response.data.slice(0, 5);
+      this.passesFromCache = response.meta.from_cache;
+    } catch (err) {
+      if (myToken !== this.passesToken) return;
+      this.passesError = err instanceof ApiError
+        ? `Pass API error ${err.status}`
+        : (err instanceof Error ? err.message : String(err));
+      this.passes = [];
+    } finally {
+      if (myToken === this.passesToken) {
+        this.passesLoading = false;
       }
     }
   }
@@ -356,8 +413,77 @@ export class SatDetailPanel extends LitElement {
       ${this.renderHeader(d.name, d)}
       ${this.renderIdentity(d)}
       ${this.renderCurrentState(d)}
+      ${this.renderVisibility(d)}
       ${d.tle_current !== null ? this.renderOrbital(d) : null}
       ${d.tle_current !== null ? this.renderRaw(d) : null}
+    `;
+  }
+
+  private renderVisibility(d: SatelliteDetail) {
+    if (d.tle_current === null) return null;
+    if (this.observer === null) {
+      return html`
+        <section>
+          <h2>§ Visibility from observer</h2>
+          <p class="small" style="color: var(--color-text-dim); margin: 0;">
+            Set your location with the 📍 pill in the top bar to see the next 5 passes.
+          </p>
+        </section>
+      `;
+    }
+    if (this.passesLoading && this.passes.length === 0) {
+      return html`<section><h2>§ Visibility from observer</h2><p class="small" style="margin:0;">Computing passes…</p></section>`;
+    }
+    if (this.passesError !== null) {
+      return html`<section><h2>§ Visibility from observer</h2><p class="small" style="margin:0; color: var(--color-warning);">${this.passesError}</p></section>`;
+    }
+    if (this.passes.length === 0) {
+      return html`
+        <section>
+          <h2>§ Visibility from observer</h2>
+          <p class="small" style="margin: 0; color: var(--color-text-dim);">
+            No passes ≥ 10° in the next 7 days from your location.
+          </p>
+        </section>
+      `;
+    }
+    const obsLabel = this.observer.label?.split(',')[0]
+      ?? `${this.observer.latitude.toFixed(2)}°, ${this.observer.longitude.toFixed(2)}°`;
+    return html`
+      <section>
+        <h2>§ Visibility from observer
+          <span style="color: var(--color-text-dim); text-transform: none; letter-spacing: 0; font-weight: normal;">— ${obsLabel}</span>
+        </h2>
+        <table class="passes" style="width: 100%; border-collapse: collapse; font-family: var(--font-mono); font-size: 0.8rem;">
+          <thead>
+            <tr style="text-align: left; color: var(--color-text-dim);">
+              <th style="padding: 0.2rem 0.4rem 0.4rem 0;">Rise</th>
+              <th style="padding: 0.2rem 0.4rem 0.4rem 0;">Peak</th>
+              <th style="padding: 0.2rem 0.4rem 0.4rem 0;">Set</th>
+              <th style="padding: 0.2rem 0 0.4rem 0; text-align: right;">Max el</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${this.passes.map((p) => {
+              const rise = new Date(p.rise_at);
+              const set = new Date(p.set_at);
+              const dateStr = `${rise.toISOString().slice(5, 10)}`;
+              const fmt = (d: Date) => d.toISOString().slice(11, 16);
+              return html`
+                <tr>
+                  <td style="padding: 0.2rem 0.4rem 0.2rem 0;">${dateStr} ${fmt(rise)}</td>
+                  <td style="padding: 0.2rem 0.4rem 0.2rem 0;">${fmt(new Date(p.peak_at))}</td>
+                  <td style="padding: 0.2rem 0.4rem 0.2rem 0;">${fmt(set)}</td>
+                  <td style="padding: 0.2rem 0 0.2rem 0; text-align: right;">${p.max_elevation_deg.toFixed(0)}°</td>
+                </tr>
+              `;
+            })}
+          </tbody>
+        </table>
+        <p class="small" style="margin: 0.4rem 0 0; color: var(--color-text-dim);">
+          UTC. Passes ≥ 10°. ${this.passesFromCache ? 'Cached.' : 'Fresh.'}
+        </p>
+      </section>
     `;
   }
 

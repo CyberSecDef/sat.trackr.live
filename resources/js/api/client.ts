@@ -3,6 +3,7 @@ import type {
   GroupDetailResponse,
   GroupListResponse,
   GroupTleBundle,
+  PassesResponse,
   SatelliteDetailResponse,
   SatelliteListResponse,
   SearchResponse,
@@ -75,6 +76,24 @@ export async function search(q: string): Promise<SearchResponse> {
 
 export async function autocomplete(q: string): Promise<AutocompleteResponse> {
   return getJson(`/autocomplete?q=${encodeURIComponent(q)}`);
+}
+
+export interface PassesQuery {
+  lat: number;
+  lon: number;
+  alt?: number;
+  days?: number;
+  min_elevation_deg?: number;
+}
+
+export async function getSatellitePasses(norad: number, query: PassesQuery): Promise<PassesResponse> {
+  const params = new URLSearchParams();
+  params.set('lat', String(query.lat));
+  params.set('lon', String(query.lon));
+  if (query.alt !== undefined) params.set('alt', String(query.alt));
+  if (query.days !== undefined) params.set('days', String(query.days));
+  if (query.min_elevation_deg !== undefined) params.set('min_elevation_deg', String(query.min_elevation_deg));
+  return getJson(`/satellites/${norad}/passes?${params.toString()}`);
 }
 
 async function getJson<T>(path: string): Promise<T> {

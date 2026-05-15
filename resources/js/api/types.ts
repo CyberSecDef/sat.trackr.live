@@ -165,6 +165,30 @@ export interface AutocompleteResponse {
   data: AutocompleteResult[];
 }
 
+export interface PassRecord {
+  rise_at: string;
+  peak_at: string;
+  set_at: string;
+  duration_seconds: number;
+  max_elevation_deg: number;
+  rise_azimuth_deg: number;
+  peak_azimuth_deg: number;
+  set_azimuth_deg: number;
+}
+
+export interface PassesResponse {
+  data: PassRecord[];
+  meta: {
+    norad_id: number;
+    count: number;
+    observer: { latitude: number; longitude: number; altitudeMeters: number };
+    days: number;
+    min_elevation_deg: number;
+    from_cache: boolean;
+    computed_at: string;
+  };
+}
+
 export interface ApiErrorBody {
   error: {
     code: string;
