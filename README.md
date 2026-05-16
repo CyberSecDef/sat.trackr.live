@@ -129,7 +129,7 @@ Self-contained — inline dark-theme CSS in the layout, no external assets, site
 
 Open `http://localhost:8000` (or the LAN URL printed by `make`). You should see:
 
-- **Top bar**: `⊕ sat.trackr.live` wordmark, `Space situational awareness, _legible_` tagline, `§ catalog · § launches · § decays · § conjunctions · § events` nav (launches/decays/conjunctions link to text views; events placeholder for Phase 4 chunk 6), search input with `⌘K` shortcut hint, `📍 observer-location` pill (Phase 2 chunk 5), `§ overlays` menu (Phase 3 chunk 4), theme switcher button.
+- **Top bar**: `⊕ sat.trackr.live` wordmark, `Space situational awareness, _legible_` tagline, `§ catalog · § launches · § decays · § conjunctions · § weather · § events` nav (launches/decays/conjunctions/weather link to text views; events placeholder for Phase 4 chunk 6), search input with `⌘K` shortcut hint, `📍 observer-location` pill (Phase 2 chunk 5), `☼ Kp` space-weather pill (Phase 4 chunk 3, opens popover with 24h trend), `§ overlays` menu (Phase 3 chunk 4), theme switcher button.
 - **Cesium globe with ~15,000 satellites** rendered as point primitives, color-coded by `object_type` (cyan = payloads + unknown, amber = rocket bodies, red = debris, gray = TBA). SGP4 propagation runs in a Web Worker at 4Hz; you should see the ISS marching across the planet, Starlink trains in formation, and ~10K LEO objects in slow-motion swarm. Drag to rotate, pinch/scroll to zoom. OpenStreetMap imagery (no Cesium ion token needed yet).
 - **Click any dot** → it turns white + 9px and the right-rail **detail panel** slides in with four `§` sections:
   - **§ Identity** — type/status/orbit-class badges + 6-cell grid (operator, country, launch date, launch vehicle, mass, RCS). After Phase 2 chunk 1 (SATCAT), object_type/status/country/launch_date/launch_site_code/RCS now populated for ~98.5% of objects (operator + mass + dimensions remain empty until later sources). External links: N2YO, Heavens-Above, Gunter, Wikipedia.
@@ -150,7 +150,7 @@ URL shapes already wired:
 
 ```bash
 # Schema management
-make migrate                          # apply migrations (12 total: 6 Phase 1 + 5 Phase 2 chunk 1 + 1 Phase 4 chunk 1)
+make migrate                          # apply migrations (13 total: 6 Phase 1 + 5 Phase 2 chunk 1 + 2 Phase 4 chunks 1+3)
 make migrate-status                   # show what's applied vs pending
 make rollback                         # reverse the most recent batch
 make make-migration NAME=add_foo      # scaffold a new migration file
@@ -212,6 +212,8 @@ The schema after `make migrate` matches `docs/phase1.md` § V exactly:
 | `GET /api/v1/satellites/{norad}/passes` | Up to 14 days of pass predictions for an observer; required `lat`+`lon`, optional `alt`/`days`/`min_elevation_deg`. Each pass is rise/peak/set ISO + duration + max elevation + 3 azimuths. `meta.from_cache` flags hits | Cold ~250ms (Node spawn), warm ~30ms; cache 5min + swr=10min |
 | `GET /api/v1/conjunctions/upcoming` | Top close-approaches (paginated). Filters: `within_hours` (1-720, default 24), `min_probability` (default 0), `limit` (1-500, default 50) + `page`, `sort` (`probability`\|`tca`\|`range`, default probability DESC) | Joined with both satellites' object_type + country; cache 10min + swr=15min |
 | `GET /api/v1/conjunctions/{primary}/{secondary}` | Every active prediction for a satellite pair, order-insensitive, sorted by TCA | 404 on no predictions; cache 5min + swr=10min |
+| `GET /api/v1/space-weather/now` | Latest NOAA SWPC sample (Kp + X-ray flux/class + R/S/G storm scales) | 404 if no samples ingested; cache 5min + swr=10min |
+| `GET /api/v1/space-weather/24h` | All samples in trailing 24h, sorted ASC | cache 5min + swr=10min |
 
 Default response headers: `Content-Type: application/json; charset=utf-8`, `Cache-Control: public, max-age=60, stale-while-revalidate=120` (controllers override per-route — bulk-TLE uses 300s, group lists use 3600s), `ETag: W/"<sha1-of-body>"` plus open CORS (`*`). `If-None-Match` → 304.
 
@@ -354,6 +356,7 @@ See [`docs/phase1.md` § X](docs/phase1.md) for the full deploy notes. TL;DR:
    0 */6 * * *   cd ~/sat.trackr.live && make ingest-ll2 MODE=previous   >> storage/logs/cron.log 2>&1
    0 */12 * * *  cd ~/sat.trackr.live && make ingest-spacetrack >> storage/logs/cron.log 2>&1
    0 */8 * * *   cd ~/sat.trackr.live && make ingest-socrates   >> storage/logs/cron.log 2>&1
+   */5 * * * *   cd ~/sat.trackr.live && make ingest-swpc       >> storage/logs/cron.log 2>&1
    30 4 * * *    cd ~/sat.trackr.live && make pass-cache-prune  >> storage/logs/cron.log 2>&1
    ```
 
