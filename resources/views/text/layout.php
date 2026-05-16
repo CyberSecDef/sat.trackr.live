@@ -25,6 +25,12 @@ $description = $description ?? 'Text catalog of every tracked satellite in Earth
   <title><?= htmlspecialchars($title, ENT_QUOTES) ?> — sat.trackr.live</title>
   <meta name="description" content="<?= htmlspecialchars($description, ENT_QUOTES) ?>">
   <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+  <!-- Phase 5 chunk 2 — installable PWA + offline cache for /text -->
+  <link rel="manifest" href="/manifest.webmanifest">
+  <link rel="apple-touch-icon" href="/apple-touch-icon.png">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="sat.trackr">
   <style>
     :root {
       --bg: #0a0e27;
@@ -301,6 +307,22 @@ $description = $description ?? 'Text catalog of every tracked satellite in Earth
       th, td { padding: 0.35rem 0.4rem; }
     }
   </style>
+  <script>
+    // Phase 5 chunk 2 — service-worker registration for /text visitors.
+    // Skipped on localhost (matches the SPA's dev-skip) so dev-server
+    // edits aren't shadowed by a stale cache.
+    (function () {
+      if (!('serviceWorker' in navigator)) return;
+      var host = location.hostname;
+      var dev = host === 'localhost' || host === '127.0.0.1' || host.indexOf('.localhost') > 0;
+      var override = false;
+      try { override = localStorage.getItem('pwaEnableInDev') === '1'; } catch (_) {}
+      if (dev && !override) return;
+      window.addEventListener('load', function () {
+        navigator.serviceWorker.register('/sw.js', { scope: '/' }).catch(function () {});
+      });
+    })();
+  </script>
 </head>
 <body>
   <header>

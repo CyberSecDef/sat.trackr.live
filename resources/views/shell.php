@@ -34,6 +34,12 @@ $selectedAttr = $selectedNorad !== null
   <meta property="og:type" content="website">
   <meta name="twitter:card" content="summary_large_image">
   <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+  <!-- Phase 5 chunk 2 — installable PWA -->
+  <link rel="manifest" href="/manifest.webmanifest">
+  <link rel="apple-touch-icon" href="/apple-touch-icon.png">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="sat.trackr">
   <link rel="preconnect" href="https://tile.openstreetmap.org" crossorigin>
 
   <!-- Apply persisted theme before paint to prevent FOUC -->
