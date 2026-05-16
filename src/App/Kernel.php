@@ -13,6 +13,7 @@ use SatTrackr\Http\Controllers\LaunchSiteListController;
 use SatTrackr\Http\Controllers\RecentLaunchesController;
 use SatTrackr\Http\Controllers\SatelliteDetailController;
 use SatTrackr\Http\Controllers\SatelliteListController;
+use SatTrackr\Http\Controllers\SatelliteRadioController;
 use SatTrackr\Http\Controllers\SatelliteTleController;
 use SatTrackr\Http\Controllers\SearchController;
 use SatTrackr\Http\Controllers\SpaShellController;
@@ -106,6 +107,8 @@ final class Kernel
             $api->get('/satellites/{norad:[0-9]+}', SatelliteDetailController::class);
             $api->get('/satellites/{norad:[0-9]+}/tle', SatelliteTleController::class);
             $api->get('/satellites/{norad:[0-9]+}/passes', SatellitePassesController::class);
+            // Amateur-radio transmitters (Phase 5 chunk 1)
+            $api->get('/satellites/{norad:[0-9]+}/radio', SatelliteRadioController::class);
             $api->get('/groups', GroupListController::class);
             $api->get('/groups/{slug:[a-zA-Z0-9_\-]+}', GroupDetailController::class);
             $api->get('/groups/{slug:[a-zA-Z0-9_\-]+}/tles', GroupTlesController::class);

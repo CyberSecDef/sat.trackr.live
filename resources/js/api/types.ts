@@ -101,6 +101,27 @@ export interface TleResponse {
   data: TleCurrent & { norad_id: number };
 }
 
+/** Phase 5 chunk 1B — amateur-radio transmitter row from SatNOGS DB. */
+export interface SatelliteRadioTransmitter {
+  uuid: string;
+  description: string | null;
+  type: string | null;
+  alive: boolean;
+  mode: string | null;
+  baud: number | null;
+  service: string | null;
+  status: string | null;
+  uplink_low_hz: number | null;
+  uplink_high_hz: number | null;
+  downlink_low_hz: number | null;
+  downlink_high_hz: number | null;
+  updated_at: string;
+}
+
+export interface SatelliteRadioResponse {
+  data: SatelliteRadioTransmitter[];
+}
+
 export interface GroupSummary {
   slug: string;
   name: string;

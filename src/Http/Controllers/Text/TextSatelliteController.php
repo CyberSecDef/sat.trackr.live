@@ -51,10 +51,21 @@ final class TextSatelliteController
         $sat = (array) $satRow;
         $tle = $tleRow !== null ? (array) $tleRow : null;
 
+        // Phase 5 chunk 1B — amateur-radio transmitters mirrored from /api endpoint.
+        /** @var list<\stdClass> $radioRows */
+        $radioRows = $this->db->capsule()->table('satellite_radio')
+            ->where('norad_id', $norad)
+            ->orderByDesc('alive')
+            ->orderBy('description')
+            ->get()
+            ->all();
+        $radio = array_map(static fn (\stdClass $r): array => (array) $r, $radioRows);
+
         $body = $this->renderer->renderInner('satellite.php', [
             'sat'      => $sat,
             'tle'      => $tle,
             'purposes' => array_map('strval', $purposes),
+            'radio'    => $radio,
         ]);
 
         $name = (string) $sat['name'];

@@ -1,10 +1,23 @@
 <?php
 /**
- * @var array<string, mixed>      $sat
- * @var array<string, mixed>|null $tle
- * @var list<string>              $purposes
+ * @var array<string, mixed>            $sat
+ * @var array<string, mixed>|null       $tle
+ * @var list<string>                    $purposes
+ * @var list<array<string, mixed>>      $radio  Phase 5 chunk 1B — SatNOGS transmitters
  */
 $noradHtml = (int) $sat['norad_id'];
+
+/** Format a frequency range in MHz/GHz; mirrors the JS formatFreq() in DetailPanel.ts. */
+$fmtFreq = static function (mixed $low, mixed $high): string {
+    if ($low === null || $low === '') return '—';
+    $f = static function (float $hz): string {
+        if ($hz >= 1e9) return number_format($hz / 1e9, 3) . ' GHz';
+        return number_format($hz / 1e6, 3) . ' MHz';
+    };
+    $lo = (float) $low;
+    if ($high === null || $high === '' || (float) $high === $lo) return $f($lo);
+    return $f($lo) . '–' . $f((float) $high);
+};
 ?>
 <p class="small"><a href="/text">‹ back to catalog</a></p>
 
@@ -84,4 +97,28 @@ $noradHtml = (int) $sat['norad_id'];
   <p class="small">For live sub-satellite position, see the <a href="/satellite/<?= $noradHtml ?>">globe view</a> (requires WebGL).</p>
 <?php else: ?>
   <p class="empty">No TLE on file for this object.</p>
+<?php endif; ?>
+
+<?php if (!empty($radio)): ?>
+  <h2>§ Radio <span class="muted small">— SatNOGS DB</span></h2>
+  <table class="data">
+    <thead>
+      <tr><th>Mode</th><th>Description</th><th>Downlink</th><th>Uplink</th></tr>
+    </thead>
+    <tbody>
+      <?php foreach ($radio as $t): ?>
+        <?php $alive = (int) ($t['alive'] ?? 0) === 1; ?>
+        <tr<?= $alive ? '' : ' class="muted"' ?>>
+          <td class="mono"><?= htmlspecialchars((string) ($t['mode'] ?? '—'), ENT_QUOTES) ?></td>
+          <td>
+            <?= htmlspecialchars((string) ($t['description'] ?? '—'), ENT_QUOTES) ?>
+            <?= $alive ? '' : ' <span class="small muted">(inactive)</span>' ?>
+          </td>
+          <td class="mono"><?= htmlspecialchars($fmtFreq($t['downlink_low_hz'] ?? null, $t['downlink_high_hz'] ?? null), ENT_QUOTES) ?></td>
+          <td class="mono"><?= htmlspecialchars($fmtFreq($t['uplink_low_hz'] ?? null, $t['uplink_high_hz'] ?? null), ENT_QUOTES) ?></td>
+        </tr>
+      <?php endforeach; ?>
+    </tbody>
+  </table>
+  <p class="small muted"><?= count($radio) ?> transmitter<?= count($radio) === 1 ? '' : 's' ?> · refreshed weekly from db.satnogs.org</p>
 <?php endif; ?>

@@ -1,8 +1,8 @@
 import { LitElement, html, css, nothing } from 'lit';
 import { customElement, property, state } from 'lit/decorators.js';
 import * as Cesium from 'cesium';
-import { ApiError, getSatelliteDetail, getSatellitePasses } from '../api/client';
-import type { PassRecord, SatelliteDetail } from '../api/types';
+import { ApiError, getSatelliteDetail, getSatellitePasses, getSatelliteRadio } from '../api/client';
+import type { PassRecord, SatelliteDetail, SatelliteRadioTransmitter } from '../api/types';
 import { getSharedObserver, type Observer } from '../observer/Observer';
 import './FreshnessBadge';
 
@@ -42,11 +42,16 @@ export class SatDetailPanel extends LitElement {
   @state() private liveElevationDeg: number | null = null;
   @state() private liveAzimuthDeg: number | null = null;
 
+  @state() private radio: SatelliteRadioTransmitter[] = [];
+  @state() private radioLoading = false;
+  @state() private radioError: string | null = null;
+
   private liveTimer: number | null = null;
   private lastFetchedNorad: number | null = null;
   private observerUnsub: (() => void) | null = null;
   private lastPassKey = '';
   private passesToken = 0;
+  private radioToken = 0;
 
   static styles = css`
     :host {
@@ -274,6 +279,7 @@ export class SatDetailPanel extends LitElement {
       if (this.norad !== null && this.norad !== this.lastFetchedNorad) {
         void this.loadDetail(this.norad);
         void this.maybeLoadPasses();
+        void this.loadRadio(this.norad);
       } else if (this.norad === null) {
         this.detail = null;
         this.lastFetchedNorad = null;
@@ -281,6 +287,8 @@ export class SatDetailPanel extends LitElement {
         this.passes = [];
         this.passesError = null;
         this.lastPassKey = '';
+        this.radio = [];
+        this.radioError = null;
       }
     }
   }
@@ -319,6 +327,27 @@ export class SatDetailPanel extends LitElement {
     } finally {
       if (myToken === this.passesToken) {
         this.passesLoading = false;
+      }
+    }
+  }
+
+  private async loadRadio(norad: number): Promise<void> {
+    const myToken = ++this.radioToken;
+    this.radioLoading = true;
+    this.radioError = null;
+    this.radio = [];
+    try {
+      const response = await getSatelliteRadio(norad);
+      if (myToken !== this.radioToken) return;
+      this.radio = response.data;
+    } catch (err) {
+      if (myToken !== this.radioToken) return;
+      this.radioError = err instanceof ApiError
+        ? `Radio API error ${err.status}`
+        : (err instanceof Error ? err.message : String(err));
+    } finally {
+      if (myToken === this.radioToken) {
+        this.radioLoading = false;
       }
     }
   }
@@ -482,7 +511,56 @@ export class SatDetailPanel extends LitElement {
       ${this.renderCurrentState(d)}
       ${this.renderVisibility(d)}
       ${d.tle_current !== null ? this.renderOrbital(d) : null}
+      ${this.renderRadio()}
       ${d.tle_current !== null ? this.renderRaw(d) : null}
+    `;
+  }
+
+  private renderRadio() {
+    if (this.radioLoading && this.radio.length === 0) {
+      return html`<section><h2>§ Radio</h2><p class="small" style="margin:0;">Loading transmitters…</p></section>`;
+    }
+    if (this.radioError !== null) {
+      return html`<section><h2>§ Radio</h2><p class="small" style="margin:0; color: var(--color-warning);">${this.radioError}</p></section>`;
+    }
+    if (this.radio.length === 0) return null;
+    return html`
+      <section>
+        <h2>§ Radio
+          <span style="color: var(--color-text-dim); text-transform: none; letter-spacing: 0; font-weight: normal;">— SatNOGS DB</span>
+        </h2>
+        <table style="width: 100%; border-collapse: collapse; font-family: var(--font-mono); font-size: 0.78rem;">
+          <thead>
+            <tr style="text-align: left; color: var(--color-text-dim);">
+              <th style="padding: 0.2rem 0.4rem 0.4rem 0;">Mode</th>
+              <th style="padding: 0.2rem 0.4rem 0.4rem 0;">Description</th>
+              <th style="padding: 0.2rem 0.4rem 0.4rem 0; text-align: right;">Downlink</th>
+              <th style="padding: 0.2rem 0 0.4rem 0; text-align: right;">Uplink</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${this.radio.map((t) => {
+              const dl = formatFreq(t.downlink_low_hz, t.downlink_high_hz);
+              const ul = formatFreq(t.uplink_low_hz, t.uplink_high_hz);
+              const dim = t.alive ? '' : 'opacity: 0.5;';
+              return html`
+                <tr style="${dim}">
+                  <td style="padding: 0.2rem 0.4rem 0.2rem 0;">${t.mode ?? '—'}</td>
+                  <td style="padding: 0.2rem 0.4rem 0.2rem 0;" title=${t.description ?? ''}>
+                    ${t.description ?? '—'}
+                    ${t.alive ? null : html`<span style="color: var(--color-text-dim);"> (inactive)</span>`}
+                  </td>
+                  <td style="padding: 0.2rem 0.4rem 0.2rem 0; text-align: right;">${dl}</td>
+                  <td style="padding: 0.2rem 0 0.2rem 0; text-align: right;">${ul}</td>
+                </tr>
+              `;
+            })}
+          </tbody>
+        </table>
+        <p class="small" style="margin: 0.4rem 0 0; color: var(--color-text-dim);">
+          ${this.radio.length} transmitter${this.radio.length === 1 ? '' : 's'} · refreshed weekly from db.satnogs.org
+        </p>
+      </section>
     `;
   }
 
@@ -728,6 +806,21 @@ ${t.line2}</pre>
       </div>
     `;
   }
+}
+
+/**
+ * Format a SatNOGS-style Hz range as "145.825 MHz" or "145.825–146.000 MHz",
+ * picking MHz / GHz so amateur (VHF/UHF) and Ku-band rows both read cleanly.
+ */
+function formatFreq(low: number | null, high: number | null): string {
+  if (low === null) return '—';
+  const fmt = (hz: number) => {
+    const ghz = hz / 1e9;
+    if (ghz >= 1) return `${ghz.toFixed(3)} GHz`;
+    return `${(hz / 1e6).toFixed(3)} MHz`;
+  };
+  if (high === null || high === low) return fmt(low);
+  return `${fmt(low)}–${fmt(high)}`;
 }
 
 declare global {

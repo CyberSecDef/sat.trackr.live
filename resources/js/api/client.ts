@@ -6,6 +6,7 @@ import type {
   PassesResponse,
   SatelliteDetailResponse,
   SatelliteListResponse,
+  SatelliteRadioResponse,
   SearchResponse,
   SpaceWeather24hResponse,
   SpaceWeatherNowResponse,
@@ -58,6 +59,10 @@ export async function getSatelliteDetail(norad: number): Promise<SatelliteDetail
 
 export async function getSatelliteTle(norad: number): Promise<TleResponse> {
   return getJson(`/satellites/${norad}/tle`);
+}
+
+export async function getSatelliteRadio(norad: number): Promise<SatelliteRadioResponse> {
+  return getJson(`/satellites/${norad}/radio`);
 }
 
 export async function listGroups(): Promise<GroupListResponse> {
