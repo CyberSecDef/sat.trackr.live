@@ -55,9 +55,11 @@ use SatTrackr\Http\Middleware\JsonResponseMiddleware;
 use SatTrackr\Services\AtomGenerator;
 use SatTrackr\Services\EventsAggregator;
 use SatTrackr\Services\FreshnessClassifier;
+use SatTrackr\Services\N2YOClient;
 use SatTrackr\Services\PassCache;
 use SatTrackr\Services\PassCalculator;
 use SatTrackr\Services\PassCalculatorInterface;
+use SatTrackr\Services\PassMagnitudeEnricher;
 use SatTrackr\Ingest\CelesTrakClient;
 use SatTrackr\Ingest\CelesTrakIngester;
 use SatTrackr\Ingest\LaunchLibraryClient;
@@ -224,11 +226,22 @@ final class Container
             // Stats dashboard (Phase 4 chunk 5)
             StatsController::class             => static fn (DIContainer $c) => new StatsController($c->get(Connection::class)),
 
-            // Pass predictions (Phase 2 chunk 6)
+            // Pass predictions (Phase 2 chunk 6 + Phase 4 chunk 7B magnitude enrichment)
+            N2YOClient::class                => static fn (DIContainer $c) => new N2YOClient(
+                http:          $c->get(GuzzleClient::class),
+                apiKey:        EnvLoader::get('N2YO_API_KEY', '') ?? '',
+                stateFilePath: $rootDir . '/storage/cache/n2yo-quota.json',
+                logger:        $c->get(LoggerInterface::class),
+            ),
+            PassMagnitudeEnricher::class      => static fn (DIContainer $c) => new PassMagnitudeEnricher(
+                n2yo:   $c->get(N2YOClient::class),
+                logger: $c->get(LoggerInterface::class),
+            ),
             SatellitePassesController::class  => static fn (DIContainer $c) => new SatellitePassesController(
                 $c->get(Connection::class),
                 $c->get(PassCalculatorInterface::class),
                 $c->get(PassCache::class),
+                $c->get(PassMagnitudeEnricher::class),
             ),
 
             Connection::class => static function () use ($rootDir): Connection {

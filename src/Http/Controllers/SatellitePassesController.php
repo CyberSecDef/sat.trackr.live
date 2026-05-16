@@ -9,6 +9,7 @@ use Psr\Http\Message\ServerRequestInterface as Request;
 use SatTrackr\Database\Connection;
 use SatTrackr\Services\PassCache;
 use SatTrackr\Services\PassCalculatorInterface;
+use SatTrackr\Services\PassMagnitudeEnricher;
 use SatTrackr\Support\Json;
 use Slim\Exception\HttpBadRequestException;
 use Slim\Exception\HttpNotFoundException;
@@ -34,6 +35,7 @@ final class SatellitePassesController
         private readonly Connection $db,
         private readonly PassCalculatorInterface $calculator,
         private readonly PassCache $cache,
+        private readonly ?PassMagnitudeEnricher $enricher = null,
     ) {
     }
 
@@ -82,7 +84,13 @@ final class SatellitePassesController
                 days: $days,
                 minElevationDeg: $minEl,
             );
-            $payload = ['count' => (int) $result['count'], 'passes' => $result['passes']];
+            // Phase 4 chunk 7B — best-effort N2YO magnitude enrichment.
+            // Service degrades silently on missing key / quota / error;
+            // unenriched passes have `magnitude: null`.
+            $passes = $this->enricher !== null
+                ? $this->enricher->enrich($result['passes'], $norad, $lat, $lon, $alt, $days)
+                : $result['passes'];
+            $payload = ['count' => count($passes), 'passes' => $passes];
             $this->cache->put($norad, $lat, $lon, $alt, $day, $payload);
         }
 

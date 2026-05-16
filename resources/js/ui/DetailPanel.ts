@@ -528,7 +528,8 @@ export class SatDetailPanel extends LitElement {
               <th style="padding: 0.2rem 0.4rem 0.4rem 0;">Rise</th>
               <th style="padding: 0.2rem 0.4rem 0.4rem 0;">Peak</th>
               <th style="padding: 0.2rem 0.4rem 0.4rem 0;">Set</th>
-              <th style="padding: 0.2rem 0 0.4rem 0; text-align: right;">Max el</th>
+              <th style="padding: 0.2rem 0.4rem 0.4rem 0; text-align: right;">Max el</th>
+              <th style="padding: 0.2rem 0 0.4rem 0; text-align: right;" title="Visual magnitude — lower is brighter; <0 is naked-eye obvious">Mag</th>
             </tr>
           </thead>
           <tbody>
@@ -537,12 +538,16 @@ export class SatDetailPanel extends LitElement {
               const set = new Date(p.set_at);
               const dateStr = `${rise.toISOString().slice(5, 10)}`;
               const fmt = (d: Date) => d.toISOString().slice(11, 16);
+              const mag = p.magnitude ?? null;
               return html`
                 <tr>
                   <td style="padding: 0.2rem 0.4rem 0.2rem 0;">${dateStr} ${fmt(rise)}</td>
                   <td style="padding: 0.2rem 0.4rem 0.2rem 0;">${fmt(new Date(p.peak_at))}</td>
                   <td style="padding: 0.2rem 0.4rem 0.2rem 0;">${fmt(set)}</td>
-                  <td style="padding: 0.2rem 0 0.2rem 0; text-align: right;">${p.max_elevation_deg.toFixed(0)}°</td>
+                  <td style="padding: 0.2rem 0.4rem 0.2rem 0; text-align: right;">${p.max_elevation_deg.toFixed(0)}°</td>
+                  <td style="padding: 0.2rem 0 0.2rem 0; text-align: right; color: ${mag !== null && mag < 3 ? 'var(--color-accent)' : 'var(--color-text)'};">
+                    ${mag !== null ? mag.toFixed(1) : html`<span style="color: var(--color-text-dim);">—</span>`}
+                  </td>
                 </tr>
               `;
             })}

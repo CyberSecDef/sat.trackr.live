@@ -174,6 +174,10 @@ export interface PassRecord {
   rise_azimuth_deg: number;
   peak_azimuth_deg: number;
   set_azimuth_deg: number;
+  /** Visual magnitude from N2YO (Phase 4 chunk 7).  Null if the pass
+   *  didn't match an N2YO entry (e.g. below visibility threshold, no
+   *  API key configured, or quota exhausted). */
+  magnitude?: number | null;
 }
 
 export interface PassesResponse {
