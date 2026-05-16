@@ -42,7 +42,7 @@ final class MigrationsTest extends TestCase
     {
         $applied = $this->migrator->migrate();
 
-        $this->assertCount(13, $applied);
+        $this->assertCount(14, $applied);
         $this->assertSame(
             [
                 // Phase 1
@@ -61,6 +61,8 @@ final class MigrationsTest extends TestCase
                 // Phase 4 (chunks 1 + 3)
                 '2026_05_16_000012_create_conjunctions_table',
                 '2026_05_16_000013_create_space_weather_samples_table',
+                // Phase 5 (chunk 1)
+                '2026_05_16_000014_create_satellite_radio_table',
             ],
             $applied
         );
@@ -78,6 +80,8 @@ final class MigrationsTest extends TestCase
             'launch_sites', 'launches', 'reentries', 'pass_cache',
             // Phase 4 chunks 1 + 3
             'conjunctions', 'space_weather_samples',
+            // Phase 5 chunk 1
+            'satellite_radio',
         ];
         foreach ($expected as $table) {
             $count = $this->connection->pdo()
@@ -159,11 +163,11 @@ final class MigrationsTest extends TestCase
     {
         $this->migrator->migrate();
         $rolled = $this->migrator->rollback();
-        $this->assertCount(13, $rolled);
+        $this->assertCount(14, $rolled);
 
         // All app tables should be gone (the migrations table itself stays).
         $stmt = $this->connection->pdo()
-            ->query("SELECT name FROM sqlite_master WHERE type='table' AND name IN ('satellites','tle_current','tle_history','satellite_purposes','group_membership','launches','launch_sites','reentries','pass_cache','conjunctions','space_weather_samples')");
+            ->query("SELECT name FROM sqlite_master WHERE type='table' AND name IN ('satellites','tle_current','tle_history','satellite_purposes','group_membership','launches','launch_sites','reentries','pass_cache','conjunctions','space_weather_samples','satellite_radio')");
         $this->assertNotFalse($stmt);
         $remaining = $stmt->fetchAll(\PDO::FETCH_COLUMN, 0);
         $this->assertSame([], $remaining);

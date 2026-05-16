@@ -15,6 +15,7 @@ use Psr\Log\LoggerInterface;
 use SatTrackr\Cli\Commands\HealthCommand;
 use SatTrackr\Cli\Commands\IngestCelesTrakCommand;
 use SatTrackr\Cli\Commands\IngestLaunchLibraryCommand;
+use SatTrackr\Cli\Commands\IngestSatnogsCommand;
 use SatTrackr\Cli\Commands\IngestSocratesCommand;
 use SatTrackr\Cli\Commands\IngestOvationCommand;
 use SatTrackr\Cli\Commands\IngestSpaceTrackCommand;
@@ -36,6 +37,7 @@ use SatTrackr\Http\Controllers\LaunchSiteListController;
 use SatTrackr\Http\Controllers\RecentLaunchesController;
 use SatTrackr\Http\Controllers\SatelliteDetailController;
 use SatTrackr\Http\Controllers\SatelliteListController;
+use SatTrackr\Http\Controllers\SatelliteRadioController;
 use SatTrackr\Http\Controllers\SatelliteTleController;
 use SatTrackr\Http\Controllers\SearchController;
 use SatTrackr\Http\Controllers\SpaShellController;
@@ -65,6 +67,8 @@ use SatTrackr\Ingest\CelesTrakIngester;
 use SatTrackr\Ingest\LaunchLibraryClient;
 use SatTrackr\Ingest\LaunchLibraryIngester;
 use SatTrackr\Ingest\SpaceTrackClient;
+use SatTrackr\Ingest\SatnogsClient;
+use SatTrackr\Ingest\SatnogsIngester;
 use SatTrackr\Ingest\SocratesClient;
 use SatTrackr\Ingest\SocratesCsvParser;
 use SatTrackr\Ingest\SocratesIngester;
@@ -199,6 +203,7 @@ final class Container
                 $c->get(Connection::class),
                 $c->get(FreshnessClassifier::class),
             ),
+            SatelliteRadioController::class  => static fn (DIContainer $c) => new SatelliteRadioController($c->get(Connection::class)),
             GroupListController::class       => static fn (DIContainer $c) => new GroupListController($c->get(Connection::class)),
             GroupDetailController::class     => static fn (DIContainer $c) => new GroupDetailController($c->get(Connection::class)),
             GroupTlesController::class       => static fn (DIContainer $c) => new GroupTlesController($c->get(Connection::class)),
@@ -304,6 +309,14 @@ final class Container
                 logger: $c->get(LoggerInterface::class),
             ),
 
+            // SatNOGS amateur-radio enrichment (Phase 5 chunk 1)
+            SatnogsClient::class    => static fn (DIContainer $c) => new SatnogsClient($c->get(GuzzleClient::class)),
+            SatnogsIngester::class  => static fn (DIContainer $c) => new SatnogsIngester(
+                client: $c->get(SatnogsClient::class),
+                db:     $c->get(Connection::class),
+                logger: $c->get(LoggerInterface::class),
+            ),
+
             // SWPC space weather (Phase 4 chunk 3)
             SwpcClient::class   => static fn (DIContainer $c) => new SwpcClient($c->get(GuzzleClient::class)),
             SwpcIngester::class => static fn (DIContainer $c) => new SwpcIngester(
@@ -355,6 +368,10 @@ final class Container
             ),
             IngestSocratesCommand::class  => static fn (DIContainer $c) => new IngestSocratesCommand(
                 $c->get(SocratesIngester::class),
+                $c->get(Connection::class),
+            ),
+            IngestSatnogsCommand::class   => static fn (DIContainer $c) => new IngestSatnogsCommand(
+                $c->get(SatnogsIngester::class),
                 $c->get(Connection::class),
             ),
             IngestOvationCommand::class   => static fn (DIContainer $c) => new IngestOvationCommand(

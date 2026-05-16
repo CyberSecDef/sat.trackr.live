@@ -142,6 +142,10 @@ ingest-socrates: ## Run SOCRATES conjunction ingester (HOURS=N TCA window, defau
 ingest-swpc: ## Snapshot NOAA SWPC space-weather indicators (Phase 4 chunk 3)
 	php bin/console ingest:swpc
 
+.PHONY: ingest-satnogs
+ingest-satnogs: ## Refresh amateur-radio transmitter catalog from SatNOGS DB (Phase 5 chunk 1)
+	php bin/console ingest:satnogs
+
 .PHONY: ingest-ovation
 ingest-ovation: ## Refresh the NOAA OVATION aurora-forecast raster (Phase 4 chunk 4)
 	php bin/console ingest:ovation
