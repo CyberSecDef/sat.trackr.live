@@ -1,8 +1,8 @@
 # Phase 4 Design — sat.trackr.live
 
-**Status:** Outline (drafted at the close of Phase 3)
-**Scope:** §28 of `req_spec.md` Phase 4 — "Situational awareness." Add the four data surfaces that turn the catalog from "things in orbit" into "things in orbit, what they're doing, what's about to happen."
-**Target:** A dashboard you can leave open and learn things from. Conjunction warnings, current space weather, real-time catalog stats, and a syndicated event feed.
+**Status:** Plan locked at the close of Phase 3; chunk 1 not yet started.
+**Scope:** §28 of `req_spec.md` Phase 4 — "Situational awareness." Add the four data surfaces that turn the catalog from "things in orbit" into "things in orbit, what they're doing, what's about to happen" — plus fold in three deferred items carried forward from Phases 2 + 3.
+**Target:** A dashboard you can leave open and learn things from. Conjunction warnings, current space weather, real-time catalog stats, a syndicated event feed, recognizable spacecraft models, magnitude-aware pass predictions.
 
 ---
 
@@ -10,75 +10,91 @@
 
 ### Goals
 
-1. **Conjunction warnings.** Pull SOCRATES (CelesTrak's Satellite Orbital Conjunction Reports Assessing Threatening Encounters in Space) and render the top close-approaches with TCA, miss distance, and probability. New `/conjunctions` text view + JSON endpoints + topbar `§ conjunctions` link.
-2. **Space weather widget.** Current Kp index, solar X-ray flux, F10.7, geomagnetic storm warnings — sourced from NOAA SWPC. Compact widget in the topbar; full `/space-weather` view with current values + 24h trend + historical context.
-3. **Aurora overlay.** Optional globe overlay rendering NOAA OVATION auroral oval forecast for now + 30 min ahead. Fits into the existing `§ overlays` menu from Phase 3 chunk 4.
+1. **Conjunction warnings.** Pull SOCRATES (CelesTrak's Satellite Orbital Conjunction Reports Assessing Threatening Encounters in Space), parse the full HTML reports (TCA, miss distance, relative velocity, max probability, secondary NORAD, repeat probability), render the top close-approaches with deep links to each object. New `/conjunctions` text view + JSON endpoints + topbar `§ conjunctions` link.
+2. **Space weather widget.** Current Kp index, solar X-ray flux, F10.7, geomagnetic storm warnings — sourced from NOAA SWPC. Compact pill in the topbar (Kp + storm-level glyph); click opens a popover with the current values + a 24h trend chart. Full `/text/space-weather` view for the non-JS path.
+3. **Aurora overlay.** Optional globe overlay rendering NOAA OVATION auroral oval forecast for now + 30 min ahead. Fits into the existing `§ overlays` menu from Phase 3 chunk 4 as the 5th toggle.
 4. **Stats dashboard.** `/stats` view — live counts by country/operator/type/launch year, largest constellations, mass in orbit, debris vs payload ratio. Powered entirely by aggregations over the existing `satellites` table; no new ingest.
-5. **Event feed + RSS.** `/events` view chronologically merging recent launches (Phase 2 chunk 3) + recent reentries (Phase 2 chunk 4) + significant conjunctions + space weather alerts. Atom feed at `/events.atom` for syndication.
+5. **Events feed + RSS.** `/events` view chronologically merging recent launches (Phase 2 chunk 3) + recent reentries (Phase 2 chunk 4) + significant conjunctions + space weather alerts. Atom 1.0 feed at `/events.atom` for syndication.
+6. **Click ground station → "tracking N satellites" tooltip.** Phase 3 chunk 4 deferral. Uses chunk-6A elevation logic against cached satellite positions.
+7. **N2YO magnitude enrichment for pass predictions.** Phase 2 chunk 6 deferral. Adds a magnitude column to the §Visibility pass table when N2YO returns data; degrades silently on quota exhaustion.
+8. **Real glTF for marquee satellites.** Phase 3 chunk 3 deferral. Replaces the BoxGeometry/CylinderGeometry stand-ins with actual self-hosted glTF models. Acquisition is the hard part; the swap-in is a one-method change in `MarqueeShapeLayer.buildPrimitive`.
 
 ### Acceptance criteria
 
 - [ ] `make ingest-socrates` populates a new `conjunctions` table from CelesTrak's report (~150-300 records typical) in <60s.
 - [ ] `GET /api/v1/conjunctions/upcoming?within_hours=N` returns conjunctions with TCA in [now, now+N], cache 10min + swr=15min.
-- [ ] `GET /api/v1/space-weather/now` returns current Kp + X-ray flux + F10.7 + storm-watch level, cache 5min.
+- [ ] `GET /api/v1/space-weather/now` returns current Kp + X-ray flux + F10.7 + storm-watch level, cache 5min. `/api/v1/space-weather/24h` returns the trend sample.
 - [ ] `/text/conjunctions` and `/text/space-weather` mirror the JSON endpoints as plain HTML.
 - [ ] `<sat-space-weather-pill>` in the topbar shows Kp + storm-level glyph; click opens a popover with the trend chart.
 - [ ] `<sat-aurora-overlay>` (lazy-loaded raster, ~few hundred KB) toggles on/off via the `§ overlays` menu.
-- [ ] `/stats` view renders with sortable tables: Top 20 operators, Top 20 countries, mass-in-orbit by class, debris vs payload pie.
+- [ ] `/stats` view renders with sortable tables: Top 20 operators, Top 20 countries, mass-in-orbit by class, debris vs payload pie. JSON `/api/v1/stats/{breakdown}` powers it.
 - [ ] `/events.atom` validates as proper Atom 1.0 + carries a deep-link `<link>` to each event's detail page on the SPA.
-- [ ] All new code passes `make ci`.  Test count grows by ~30-40 (estimate ~25 PHP + ~10 JS + a handful of e2e).
+- [ ] Clicking a ground station in the globe shows a small tooltip with "Currently tracking N satellites" + a "view list" affordance.
+- [ ] N2YO magnitude enrichment surfaces in `/api/v1/satellites/{norad}/passes` as `magnitude: 2.4 | null` per pass; daily quota guard logs `warn` + sets `null` instead of erroring on quota exhaustion.
+- [ ] Marquee satellites (ISS / Tiangong / Hubble / cargo capsules / Starlink) render as actual recognizable glTF models when zoomed in; if a free glTF can't be sourced for a given satellite, the chunk-3 procedural stand-in stays as the documented fallback.
+- [ ] All new code passes `make ci`. Test count grows by ~60-80 (estimate ~50 PHP + ~10 JS + a handful of e2e).
 - [ ] `README.md` reflects the new surfaces; this doc closes when chunks are all done.
 
 ### Explicitly NOT in Phase 4 (deferred)
 
 Pushed to Phase 5+:
-- AMSAT / SatNOGS radio-pass enrichment (req_spec §17 — Phase 5)
-- Mobile PWA optimization, sharing deep-links, OG image generation, sitemap, SEO (Phase 5)
-- Conjunction-replay 3D scene (req_spec §16 mentions; deferred until conjunctions data is well-understood)
-- ICS calendar export for passes (req_spec §17 — Phase 5)
+- AMSAT / SatNOGS radio-pass enrichment (req_spec §17)
+- Mobile PWA optimization, sharing deep-links, OG image generation, sitemap, SEO
+- Conjunction-replay 3D scene (revisit after Phase 4 chunks 1-2 land — the data + UI need to settle first)
+- ICS calendar export for passes
+- Browser-worker compute_passes (dropped — cached server path is already <30ms warm)
+- Per-station sensor-cone half-angles (overrides per ground station for chunk-4 cones; chunk-4 spec uses uniform 5°)
+- Custom-GLSL atmosphere shader (Phase 3 chunk 1 deferred; revisit only if the Cesium default looks bad once Phase 4 settles)
 
 ---
 
-## § II — Locked-and-default decisions
+## § II — Locked decisions
 
-(Will lock on review before chunk 1 starts; defaults based on what would land naturally.)
-
-| # | Decision | Default | Rationale |
-|---|---|---|---|
-| 1 | Conjunction data source | **CelesTrak SOCRATES** (https://celestrak.org/SOCRATES/) | Free, public, aligns with the existing CelesTrak ingest path. |
-| 2 | Space weather data source | **NOAA SWPC JSON endpoints** (services.swpc.noaa.gov) | Free, no key, well-documented, sub-15min refresh. |
-| 3 | Aurora overlay source | **NOAA OVATION-Aurora** raster | ~250KB lazy raster updated every 15min; acceptable bundle weight. |
-| 4 | Conjunction-rank threshold | **Top 20 by probability** in the topbar pill; full list in `/conjunctions` | Avoid scrolling a 300-row list every page load. |
-| 5 | Atom feed window | **Last 7 days** of events | RSS readers typically poll once/day; 7d window keeps the file <50KB. |
-| 6 | N2YO magnitude (Phase-2 deferral) | **Defer further to Phase 5** | UX value uncertain vs N2YO quota cost; revisit when there's user demand. |
-| 7 | Browser-worker compute_passes (Phase-2 deferral) | **Drop entirely** | Server-cached path is already <30ms warm; the worker path was never load-bearing. |
-| 8 | Visual-diff baselines (Phase-3 deferral) | **Land in chunk 6 polish of Phase 4** | Phase 4 surfaces (`/conjunctions`, `/stats`, `/events`) are stable HTML, much easier to baseline than the Cesium globe. |
+| # | Decision | Locked answer |
+|---|---|---|
+| 1 | Conjunction data source | **CelesTrak SOCRATES** (https://celestrak.org/SOCRATES/) |
+| 2 | Conjunction ingest depth | **Full HTML scrape** — TCA + miss distance + relative velocity + max probability + secondary NORAD + repeat probability. Parser tolerated; snapshot-fixture regression test pins the current layout. |
+| 3 | Space weather data source | **NOAA SWPC JSON endpoints** (services.swpc.noaa.gov) |
+| 4 | Space weather widget richness | **Topbar pill + popover with current values + 24h trend chart** (Kp + X-ray + F10.7 + storm-watch in the popover; Kp + storm glyph in the pill) |
+| 5 | Aurora overlay source | **NOAA OVATION-Aurora** raster |
+| 6 | Conjunction-rank threshold in pill | **Top 20 by probability** (full list in `/conjunctions`) |
+| 7 | Atom feed window | **Last 7 days** of events |
+| 8 | Visual-diff Playwright baselines | **Land in chunk 8 polish** (Phase 4 surfaces are stable HTML, easy to baseline) |
+| 9 | N2YO magnitude enrichment (Phase-2 deferral) | **Fold into chunk 7** (`N2YOClient` + quota guard + magnitude column in §Visibility pass table) |
+| 10 | Real glTF for marquee (Phase-3 deferral) | **Fold into chunk 8** — swap in real glTF where free/correctly-licensed files exist; document the stand-in fallback per satellite. |
+| 11 | Click ground station → tooltip (Phase-3 deferral) | **Fold into chunk 6** (alongside events feed; small ~50-line addition) |
+| 12 | Browser-worker compute_passes (Phase-2 deferral) | **DROPPED** — server path is fast enough; the worker path was never load-bearing |
+| 13 | Per-station sensor-cone half-angles (Phase-3 deferral) | **Push to Phase 5** — chunk-4 uniform-5° is fine for situational awareness |
 
 ---
 
-## § III — Tentative chunk plan (subject to revision before chunk 1 starts)
+## § III — Chunk plan
 
-| # | Chunk | Net new code | Tests | Depends on |
-|---|---|---|---|---|
-| **1** | **Conjunctions ingest + schema** | Migration for `conjunctions` table; SocratesClient + SocratesIngester + ingest:socrates command + Make target. | ~10 PHP | Phase-2 schema |
-| **2** | **Conjunctions API + text view** | 2 JSON endpoints (`/upcoming`, `/{id}` or `/{norad_a}/{norad_b}`); `/text/conjunctions` template + nav link. | ~8 PHP + smoke e2e | chunk 1 |
-| **3** | **Space weather ingest + widget** | Migration for `space_weather_samples`; SwpcClient + SwpcIngester + ingest:swpc command; `<sat-space-weather-pill>` + popover trend chart. | ~10 PHP + ~5 JS | nothing |
-| **4** | **Aurora overlay** | NOAA OVATION raster fetcher + lazy image-overlay primitive; `§ overlays` menu grows a 5th toggle. | ~3 JS | Phase-3 chunk 4 OverlayService |
-| **5** | **Stats dashboard** | New `/stats` text view + JSON `/api/v1/stats/{breakdown}` (operators/countries/types/years/mass); reuses chunk-1 satellites table — no new ingest. | ~8 PHP + smoke e2e | nothing |
-| **6** | **Events feed + Atom + polish + Phase 5 outline** | `/events` text view + `/events.atom` Atom 1.0 generator merging launches/reentries/conjunctions/storm-warnings; visual-diff Playwright baselines for the new surfaces; README closes Phase 4; drafts `docs/phase5.md`. | ~5 PHP + Playwright suite | all prior |
+| # | Chunk | Net new code | Tests | Bundle delta | Depends on |
+|---|---|---|---|---|---|
+| **1** | **Conjunctions ingest + schema** | Migration for `conjunctions` table; `SocratesClient` (Guzzle + HTML scrape) + `SocratesIngester` + `bin/console ingest:socrates` + `make ingest-socrates`; snapshot-fixture regression test for parser. | ~10 PHP | Server-only | Phase-2 schema |
+| **2** | **Conjunctions API + text view** | 2 JSON endpoints (`/api/v1/conjunctions/upcoming?within_hours=N`, `/api/v1/conjunctions/{primary}/{secondary}`); `/text/conjunctions` template + topbar `§ conjunctions` nav link. | ~8 PHP + smoke e2e | Main +5KB | chunk 1 |
+| **3** | **Space weather ingest + pill + popover** | Migration for `space_weather_samples`; `SwpcClient` + `SwpcIngester` + `bin/console ingest:swpc`; `<sat-space-weather-pill>` (Kp + glyph in topbar) + `<sat-weather-popover>` (current values + 24h trend chart via hand-rolled SVG, no Chart.js dep); `/text/space-weather` mirror. | ~10 PHP + ~5 JS | Main +12KB | nothing |
+| **4** | **Aurora overlay** | OVATION raster fetcher + lazy image-overlay primitive (`AuroraOverlayLayer`); `§ overlays` menu grows a 5th toggle. Server-side cache keyed on OVATION's 15-min update tick. | ~3 PHP + ~3 JS | Lazy ~250KB | Phase-3 chunk 4 OverlayService |
+| **5** | **Stats dashboard** | `/stats` text view + JSON `/api/v1/stats/{breakdown}` (operators/countries/types/years/mass/debris-ratio); aggregations over the existing `satellites` table — no new ingest. | ~8 PHP + smoke e2e | Server-only | nothing |
+| **6** | **Events feed + Atom + station tooltip** | `/events` text view + `/events.atom` Atom 1.0 generator merging launches / reentries / conjunctions / storm-warnings; `AtomGenerator` unit-tested against a snapshot fixture; click-station tooltip via `SelectionController` upgrade to emit station-pick events. | ~5 PHP + ~3 JS | Main +3KB | chunks 1-5 |
+| **7** | **N2YO magnitude enrichment** | `N2YOClient` (Guzzle + daily quota guard via `quota_state` table or simple cache file); pass-cache schema grows `magnitude REAL NULL`; `PassCalculator` calls N2YO best-effort after compute; `§ Visibility` pass table gains a `Mag` column. | ~10 PHP + ~3 JS | Main +1KB | Phase-2 chunks 5+6 |
+| **8** | **Real glTF + Playwright baselines + Phase 5 outline + README close** | Source free/CC-BY glTF for ISS / Tiangong / Hubble / Dragon / Cygnus / Soyuz / Starlink (best-effort — falls back to chunk-3 stand-in per satellite); `MarqueeShapeLayer.buildPrimitive` learns to call `Cesium.Model.fromGltfAsync` when `MarqueeSpec.gltfUri` is set. Visual-diff baseline screenshots for the new HTML surfaces (`/conjunctions`, `/stats`, `/events`, `/text/space-weather`). README closes Phase 4; drafts `docs/phase5.md`. | Playwright suite + ~3 vitest | Lazy ~few MB | all prior |
 
-**Estimated 30-45 new tests**, bringing total from 228 → ~270.
-**Bundle target:** ≤275KB gzipped main (room for the space-weather pill + aurora overlay; Phase 3 ended at 136KB).
+**Estimated 55-75 new tests**, bringing total from 228 → ~300.
+**Bundle target:** ≤275 KB gzipped main (Phase 3 ended at 136 KB; budget ~140 KB cushion). Lazy assets (aurora raster + glTF models) add server-side weight but don't bloat the main bundle.
 
 ---
 
 ## § IV — Dependencies & risk
 
-- **SOCRATES format stability.** The CelesTrak HTML report is parsed; any layout change breaks ingest. Mitigation: keep the parser tolerant + add a sample-fixture regression test that pins the current layout.
-- **NOAA SWPC rate limits.** Their free JSON endpoints don't enforce hard limits but do expect "polite" use. Cap at 1 req/min (cron driven) and cache aggressively.
-- **Aurora overlay refresh cadence.** OVATION updates every 15 minutes; we'll need a cache/refresh story so we don't refetch every page load.  Mitigation: server-side cache keyed on the OVATION update timestamp (15-min granularity).
-- **Atom feed validity.** Generated XML must validate against Atom 1.0 + Feed Validator. Mitigation: unit-test the generator against a snapshot fixture + a CI check that runs the W3C feed-validator output through `xmllint --noout`.
-- **Stats query perf.** Several `GROUP BY` aggregations over ~15K satellites are fine in SQLite, but if the catalog grows past 100K (post-Alpha-5) we'll need indexes on `country` + `operator` + `launch_date_year`. Mitigation: add covering indexes as part of chunk 5.
+- **SOCRATES format stability.** The CelesTrak HTML report is parsed; any layout change breaks ingest. **Mitigation:** keep the parser tolerant + a snapshot-fixture regression test pins the current layout. CelesTrak has been stable for years but rewrites do happen.
+- **NOAA SWPC rate limits.** Their free JSON endpoints don't enforce hard limits but expect "polite" use. Cron-driven at 5-min intervals; cache aggressively.
+- **Aurora overlay refresh cadence.** OVATION updates every 15 minutes; need a cache/refresh story so we don't refetch every page load. **Mitigation:** server-side cache keyed on OVATION's update timestamp.
+- **Atom feed validity.** Generated XML must validate as Atom 1.0. **Mitigation:** unit-test the generator against a snapshot fixture + CI runs the feed-validator output through `xmllint --noout`.
+- **Stats query perf.** Several `GROUP BY` aggregations over ~15K satellites are fine in SQLite, but if the catalog grows past 100K (post-Alpha-5) we'll need covering indexes on `country` + `operator` + `launch_date_year`. **Mitigation:** add the indexes as part of chunk 5.
+- **N2YO daily quota.** 1000 req/day on the free tier. Per-pass-calc enrichment burns through it fast if many users query. **Mitigation:** quota guard hard-caps to 800/day; log `warn` + return `magnitude: null` when exhausted; UI gracefully shows "—" in the Mag column.
+- **glTF acquisition cost.** Free + correctly-licensed satellite glTFs are hard to find. **Mitigation:** ship what we can source (ISS is the most likely available; Starlink/Soyuz less so); fall back to the chunk-3 procedural stand-in per-satellite; document the per-sat licensing in `public/models/CREDITS.md`.
 
 ---
 
@@ -88,9 +104,10 @@ Pushed to Phase 5+:
 - ICS calendar export for passes (Phase 5)
 - Mobile PWA optimization (Phase 5)
 - Sharing deep-links, OG image generation, sitemap, SEO (Phase 5)
-- 3D-conjunction-replay scene (revisit after Phase 4 chunks 1-2 land — the data + UI need to settle first)
-- N2YO magnitude enrichment (Phase 5)
+- 3D-conjunction-replay scene (revisit in Phase 5 after Phase 4 chunks 1-2 land)
 - Browser-worker compute_passes (dropped — cached server path is fast enough)
+- Per-station sensor-cone half-angles (Phase 5)
+- Custom-GLSL atmosphere shader (Phase 5 if Cesium default still looks bad)
 
 ---
 
