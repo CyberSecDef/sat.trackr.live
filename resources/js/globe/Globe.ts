@@ -46,6 +46,7 @@ export class Globe {
     opts: {
       cesiumIonToken: string;
       onSelect: (norad: number | null) => void;
+      onStationSelect?: (pick: { stationId: string; name: string }, screenPos: { x: number; y: number }) => void;
       onStatus: (status: string) => void;
       onClockReady?: (clock: Clock) => void;
     },
@@ -107,7 +108,12 @@ export class Globe {
     this.stations = new GroundStationLayer(viewer.scene);
     this.lightPollution = new LightPollutionLayer(viewer);
     this.aurora = new AuroraOverlayLayer(viewer);
-    this.selection = new SelectionController(viewer, opts.onSelect);
+    this.selection = new SelectionController(viewer, {
+      onSelect: opts.onSelect,
+      onStationSelect: opts.onStationSelect
+        ? (pick, pos) => opts.onStationSelect?.(pick, pos)
+        : undefined,
+    });
     opts.onClockReady?.(this.clock);
 
     // Phase 3 chunk 4B: subscribe to OverlayService so toggles in the
@@ -214,6 +220,40 @@ export class Globe {
     const position = this.layer?.getPosition(norad) ?? null;
     const name     = this.layer?.getName(norad) ?? null;
     this.marquee.update(norad, name, position);
+  }
+
+  /**
+   * Phase 4 chunk 6D — count satellites currently above a given
+   * elevation from an observer at (lat°, lon°, alt_m).  Reads the
+   * worker's most-recent cached ECEF positions; cost is one vector
+   * subtract + two dot products per satellite (~15k iterations, sub-
+   * 50ms in practice).  Returns 0 if the point layer hasn't loaded.
+   */
+  countSatellitesAboveStation(latDeg: number, lonDeg: number, altMeters = 0, minElevationDeg = 5): number {
+    if (!this.layer) return 0;
+    const obsCart = Cesium.Cartesian3.fromDegrees(lonDeg, latDeg, altMeters);
+    const enuFromWorld = Cesium.Matrix4.inverseTransformation(
+      Cesium.Transforms.eastNorthUpToFixedFrame(obsCart),
+      new Cesium.Matrix4(),
+    );
+    const minSinEl = Math.sin((minElevationDeg * Math.PI) / 180);
+
+    let count = 0;
+    const rel = new Cesium.Cartesian3();
+    const enu = new Cesium.Cartesian3();
+    // The layer doesn't expose its internal Map, so iterate via the
+    // (norad, position) pairs accessible through the public helper.
+    for (const [, position] of this.layer.iteratePositions()) {
+      Cesium.Cartesian3.subtract(position, obsCart, rel);
+      const range = Cesium.Cartesian3.magnitude(rel);
+      if (range === 0) continue;
+      Cesium.Matrix4.multiplyByPointAsVector(enuFromWorld, rel, enu);
+      // sin(elevation) = up / range; up component is enu.z.
+      if ((enu.z / range) >= minSinEl) {
+        count++;
+      }
+    }
+    return count;
   }
 
   destroy(): void {
@@ -328,6 +368,29 @@ export class SatGlobe extends LitElement {
     await this.globe.init(container, {
       cesiumIonToken: this.cesiumIonToken,
       onSelect: (norad) => this.dispatchSelect(norad),
+      onStationSelect: (pick, pos) => {
+        // Phase 4 chunk 6D — bridge the SelectionController callback into
+        // a window-level event the <sat-station-tooltip> listens for.
+        // Compute the count synchronously against the worker's cached
+        // positions so the tooltip never flickers as "Tracking 0".
+        const layer = this.globe.stations;
+        const catalog = layer?.constructor && (layer.constructor as { catalog?: () => Array<{
+          id: string; name: string; latitude_deg: number; longitude_deg: number; altitude_m: number;
+        }> }).catalog?.() || [];
+        const station = catalog.find((s) => s.id === pick.stationId);
+        const count = station
+          ? this.globe.countSatellitesAboveStation(station.latitude_deg, station.longitude_deg, station.altitude_m, 5)
+          : 0;
+        window.dispatchEvent(new CustomEvent('station-pick-info', {
+          detail: {
+            stationId: pick.stationId,
+            name:      pick.name,
+            trackingCount: count,
+            screenX:   pos.x,
+            screenY:   pos.y,
+          },
+        }));
+      },
       onStatus: (s) => {
         this.status = s;
         if (s.startsWith('Tracking')) {

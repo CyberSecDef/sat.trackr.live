@@ -8,6 +8,7 @@ import './ui/Search';
 import './ui/ObserverPill';
 import './ui/OverlaysMenu';
 import './ui/SpaceWeatherPill';
+import './ui/StationTooltip';
 import './ui/TopBar';
 import './ui/DetailPanel';
 import './ui/Timeline';

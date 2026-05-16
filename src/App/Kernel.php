@@ -36,6 +36,8 @@ use SatTrackr\Http\Controllers\Text\TextLaunchListController;
 use SatTrackr\Http\Controllers\Text\TextSatelliteController;
 use SatTrackr\Http\Controllers\Text\TextSearchController;
 use SatTrackr\Http\Controllers\Text\TextStatsController;
+use SatTrackr\Http\Controllers\Text\TextEventsController;
+use SatTrackr\Http\Controllers\AtomEventsController;
 use SatTrackr\Http\Middleware\CorsMiddleware;
 use SatTrackr\Http\Middleware\ErrorHandlerMiddleware;
 use SatTrackr\Http\Middleware\ETagMiddleware;
@@ -93,6 +95,9 @@ final class Kernel
         $app->get('/text/space-weather', TextSpaceWeatherController::class);
         // Stats dashboard (Phase 4 chunk 5)
         $app->get('/text/stats', TextStatsController::class);
+        // Events feed (Phase 4 chunk 6) — /text/events + Atom 1.0 at /events.atom
+        $app->get('/text/events', TextEventsController::class);
+        $app->get('/events.atom', AtomEventsController::class);
 
         // API routes — Slim binds the group closure to its CallableResolver,
         // which requires a non-static closure (it can't bind $this to a static).

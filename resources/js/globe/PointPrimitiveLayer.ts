@@ -108,6 +108,13 @@ export class PointPrimitiveLayer {
     return this.positionByNorad.get(norad) ?? null;
   }
 
+  /** Iterable view onto every (NORAD, position) pair the worker has reported.
+   * Used by chunk-6D's "tracking N satellites from this station" tooltip,
+   * which iterates ~15k positions and runs an elevation check against each. */
+  iteratePositions(): IterableIterator<[number, Cesium.Cartesian3]> {
+    return this.positionByNorad.entries();
+  }
+
   /** Raw TLE lines for the given NORAD, if loaded.  Used to build a fresh
    * satrec on the main thread for the chunk-2 orbit ribbon (the worker
    * has its own satrecs but doesn't expose them across threads).

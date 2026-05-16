@@ -317,6 +317,7 @@ $description = $description ?? 'Text catalog of every tracked satellite in Earth
       <a href="/text/conjunctions" class="<?= $activeNav === 'conjunctions' ? 'active' : '' ?>">§ conjunctions</a>
       <a href="/text/space-weather" class="<?= $activeNav === 'weather' ? 'active' : '' ?>">§ weather</a>
       <a href="/text/stats" class="<?= $activeNav === 'stats' ? 'active' : '' ?>">§ stats</a>
+      <a href="/text/events" class="<?= $activeNav === 'events' ? 'active' : '' ?>">§ events</a>
       <a href="/text/search" class="<?= $activeNav === 'search' ? 'active' : '' ?>">§ search</a>
       <a href="/" class="globe-link">🌐 globe view</a>
     </nav>

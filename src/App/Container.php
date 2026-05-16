@@ -52,6 +52,8 @@ use SatTrackr\Http\Middleware\CorsMiddleware;
 use SatTrackr\Http\Middleware\ErrorHandlerMiddleware;
 use SatTrackr\Http\Middleware\ETagMiddleware;
 use SatTrackr\Http\Middleware\JsonResponseMiddleware;
+use SatTrackr\Services\AtomGenerator;
+use SatTrackr\Services\EventsAggregator;
 use SatTrackr\Services\FreshnessClassifier;
 use SatTrackr\Services\PassCache;
 use SatTrackr\Services\PassCalculator;
@@ -73,9 +75,11 @@ use SatTrackr\Ingest\SwpcIngester;
 use SatTrackr\Ingest\SatCatClient;
 use SatTrackr\Ingest\SatCatIngester;
 use SatTrackr\Ingest\TleParser;
+use SatTrackr\Http\Controllers\AtomEventsController;
 use SatTrackr\Http\Controllers\Text\TextCatalogController;
 use SatTrackr\Http\Controllers\Text\TextConjunctionListController;
 use SatTrackr\Http\Controllers\Text\TextDecaysController;
+use SatTrackr\Http\Controllers\Text\TextEventsController;
 use SatTrackr\Http\Controllers\Text\TextSpaceWeatherController;
 use SatTrackr\Http\Controllers\Text\TextGroupController;
 use SatTrackr\Http\Controllers\Text\TextGroupsController;
@@ -148,6 +152,18 @@ final class Container
 
             FreshnessClassifier::class => static fn () => new FreshnessClassifier(),
             TextRenderer::class        => static fn () => new TextRenderer($rootDir),
+
+            // Events feed (Phase 4 chunk 6)
+            EventsAggregator::class    => static fn (DIContainer $c) => new EventsAggregator($c->get(Connection::class)),
+            AtomGenerator::class       => static fn () => new AtomGenerator(),
+            AtomEventsController::class => static fn (DIContainer $c) => new AtomEventsController(
+                $c->get(EventsAggregator::class),
+                $c->get(AtomGenerator::class),
+            ),
+            TextEventsController::class => static fn (DIContainer $c) => new TextEventsController(
+                $c->get(EventsAggregator::class),
+                $c->get(TextRenderer::class),
+            ),
 
             // Text-only catalog controllers (chunk 8)
             TextCatalogController::class => static fn (DIContainer $c) => new TextCatalogController(

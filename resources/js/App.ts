@@ -132,6 +132,7 @@ export class SatApp extends LitElement {
           ></sat-detail-panel>
         </div>
         <sat-timeline .clock=${this.clock}></sat-timeline>
+        <sat-station-tooltip></sat-station-tooltip>
       </div>
     `;
   }
