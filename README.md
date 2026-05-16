@@ -10,7 +10,7 @@ Part of the **trackr.live family** alongside [trackr.live](https://trackr.live) 
 
 ## Status
 
-✅ **Phase 4 complete.** All 30 chunks across phases 1-4 are live. **Foundation + data depth + showcase visuals** (phases 1-3): full SPA with globe + detail panel + time scrubbing + text-only fallback at `/text`; SATCAT/LL2/Space-Track/CelesTrak-OMM ingest with Alpha-5 NORAD encoding; observer pill + Node-SGP4 pass predictions; Cesium lighting + BSC5 stars + fading orbit ribbons + marquee 3D shapes + ground-station layer + VIIRS night-lights overlay + `§ overlays` topbar menu. **Situational awareness (Phase 4):** SOCRATES conjunctions ingest (~145 K rows) + paginated JSON API + `/text/conjunctions`; NOAA SWPC space-weather snapshots every 5 min + `☼ Kp` topbar pill with SVG trend popover + `/text/space-weather`; OVATION aurora overlay (15-min cron); `/stats` dashboard with operator/country/type/year breakdowns; `/text/events` + `/events.atom` Atom 1.0 syndication; click-station tooltip; N2YO visual-magnitude enrichment with quota guard; glTF swap-in path for marquee satellites + structural-assertion Playwright suite. **Phase 5 next** — see [`docs/phase5.md`](docs/phase5.md) for the polish + ecosystem outline (SatNOGS radio enrichment, PWA, OpenAPI 3.1 docs, OG images, sitemap/SEO, deep-link sharing).
+🚧 **Phase 5 in progress.** All 30 chunks across phases 1-4 are live; Phase 5 chunk 1 (SatNOGS amateur-radio enrichment) just landed. **Foundation + data depth + showcase visuals** (phases 1-3): full SPA with globe + detail panel + time scrubbing + text-only fallback at `/text`; SATCAT/LL2/Space-Track/CelesTrak-OMM ingest with Alpha-5 NORAD encoding; observer pill + Node-SGP4 pass predictions; Cesium lighting + BSC5 stars + fading orbit ribbons + marquee 3D shapes + ground-station layer + VIIRS night-lights overlay + `§ overlays` topbar menu. **Situational awareness (Phase 4):** SOCRATES conjunctions ingest (~145 K rows) + paginated JSON API + `/text/conjunctions`; NOAA SWPC space-weather snapshots every 5 min + `☼ Kp` topbar pill with SVG trend popover + `/text/space-weather`; OVATION aurora overlay (15-min cron); `/stats` dashboard with operator/country/type/year breakdowns; `/text/events` + `/events.atom` Atom 1.0 syndication; click-station tooltip; N2YO visual-magnitude enrichment with quota guard; glTF swap-in path for marquee satellites + structural-assertion Playwright suite. **Phase 5 next** — see [`docs/phase5.md`](docs/phase5.md) for the polish + ecosystem outline (SatNOGS radio enrichment, PWA, OpenAPI 3.1 docs, OG images, sitemap/SEO, deep-link sharing).
 
 ### Phase 1 — Foundation MVP (✅ complete)
 
@@ -62,9 +62,13 @@ Part of the **trackr.live family** alongside [trackr.live](https://trackr.live) 
 | 7. N2YO magnitude enrichment | ✅ done | The Phase 2 chunk 6 deferral lands. `N2YOClient` wraps `api.n2yo.com/rest/v1/satellite/visualpasses/` with a daily quota guard backed by `storage/cache/n2yo-quota.json` (mirrors N2YO's own `info.transactionscount` so the cap stays accurate across processes; capped at 800/day with 200 headroom under the published 1000/day informal limit). `PassMagnitudeEnricher` runs after the chunk-6 Node SGP4 compute; merges per-pass `mag` by closest peak-time match within 60 s; defaults every magnitude to `null` first so the UI shape is stable when the key is missing / quota is exhausted / N2YO 4xx's. `SatellitePassesController` wires the enricher before `cache.put`, so the 6h cache holds the enriched payload. `<sat-detail-panel>` §Visibility table grows a `Mag` column with 1-decimal precision; magnitudes <3 (naked-eye threshold) render in accent color. Verified live: fresh ISS-over-NYC fetch returned `mag=0.1/-0.3/0.5` matching N2YO's own data exactly. Bundle: 150.14 → 150.59 KB gzipped main. **209 PHP / 76 JS passing.** |
 | 8. glTF swap-in path + Playwright structural specs + Phase 5 outline | ✅ done | `MarqueeSpec` grew an optional `gltfUri`; `MarqueeShapeLayer` loads via `Cesium.Model.fromGltfAsync()` when set (with `loadToken` race-safety against re-selection mid-load), falls back to the chunk-3A procedural primitive when unset or on load failure. `public/models/CREDITS.md` documents the file-format expectation + licensing checklist for contributors. **Honest framing:** no real glTF files were sourced this chunk — that's a Phase 5 chunk 7 deliberate task. 5 new Playwright structural specs (`tests/E2E/visual.spec.ts`) cover `/text/conjunctions`, `/text/space-weather`, `/text/stats`, `/text/events`, `/events.atom`. Pixel-perfect baselines deferred to Phase 5 (needs a fixture-data layer; live data drifts every cron run). `docs/phase5.md` outlines polish + ecosystem work. Bundle: 150.59 → 151.14 KB gzipped main. **209 PHP / 76 JS / 8 e2e passing.** |
 
-### Phase 5 — Polish & ecosystem (⏳ next)
+### Phase 5 — Polish & ecosystem (🚧 in progress)
 
-See [`docs/phase5.md`](docs/phase5.md) for the outline. TL;DR: SatNOGS radio enrichment, PWA manifest + offline `/text`, OpenAPI 3.1 docs + Swagger UI, OG image generator, sitemap + structured data, deep-link sharing via Web Share, real glTF for marquee satellites.
+| Chunk | Status | Notes |
+| --- | --- | --- |
+| 1. SatNOGS amateur-radio enrichment | ✅ done | New `satellite_radio` table (UUID PK, NORAD + indexes) populated from `db.satnogs.org/api/transmitters/` — the catalog returns 4,861 transmitters as one un-paginated 3.4 MB JSON array; no API key, no pagination dance. `SatnogsClient` + `SatnogsIngester` + `ingest:satnogs` (idempotent UPSERT-by-UUID, orphan filter skips ~57% of rows whose NORAD isn't in our catalog → **2,115 transmitters** linked to satellites on first live run). New endpoint `GET /api/v1/satellites/{norad}/radio` returns alive-first-then-name-sorted transmitter rows. Detail panel + `/text/satellite/{norad}` both gained a `§ Radio` section with mode / description / downlink / uplink columns, MHz/GHz auto-formatted, inactive rows greyed. Weekly cron entry added below. **220 PHP / 76 JS / 8 e2e passing.** |
+
+See [`docs/phase5.md`](docs/phase5.md) for the outline. TL;DR after chunk 1: PWA manifest + offline `/text`, OpenAPI 3.1 docs + Swagger UI, OG image generator, sitemap + structured data, deep-link sharing via Web Share, real glTF for marquee satellites.
 
 See [`docs/phase4.md`](docs/phase4.md) for the locked plan, decisions, dependencies, and risk.
 
@@ -169,6 +173,7 @@ make ingest-spacetrack                # Space-Track TIP — predicted reentries 
 make ingest-socrates                  # CelesTrak SOCRATES — ~145k close-approach predictions in ~12s (Phase 4 chunk 1)
 make ingest-swpc                      # NOAA SWPC snapshot of Kp + X-ray + R/S/G in <1s (Phase 4 chunk 3, */5min cron)
 make ingest-ovation                   # NOAA OVATION aurora-forecast raster in <1s (Phase 4 chunk 4, */15min cron)
+make ingest-satnogs                   # SatNOGS DB transmitter catalog → satellite_radio table (Phase 5 chunk 1, weekly cron)
 make pass-cache-prune                 # Sweep expired pass-cache rows (Phase 2 chunk 6)
 make build-skybox                     # Regenerate BSC5 starfield cubemap into public/textures/skybox/ (Phase 3 chunk 1)
 make health                           # PHP / pdo_sqlite / DB / per-table row counts
@@ -366,6 +371,7 @@ See [`docs/phase1.md` § X](docs/phase1.md) for the full deploy notes. TL;DR:
    0 */8 * * *   cd ~/sat.trackr.live && make ingest-socrates   >> storage/logs/cron.log 2>&1
    */5 * * * *   cd ~/sat.trackr.live && make ingest-swpc       >> storage/logs/cron.log 2>&1
    */15 * * * *  cd ~/sat.trackr.live && make ingest-ovation    >> storage/logs/cron.log 2>&1
+   0 5 * * 0     cd ~/sat.trackr.live && make ingest-satnogs    >> storage/logs/cron.log 2>&1
    30 4 * * *    cd ~/sat.trackr.live && make pass-cache-prune  >> storage/logs/cron.log 2>&1
    ```
 
