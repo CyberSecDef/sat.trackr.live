@@ -61,8 +61,12 @@ final class ApiTest extends TestCase
 
     private function seed(): void
     {
-        $now = '2026-05-14T20:00:00.000000Z';
-        $epoch = '2026-05-14T04:45:57.957408Z'; // ~15 hours old → FRESH
+        // Anchor relative to the real clock so the FreshnessClassifier
+        // (which defaults to `new DateTimeImmutable()`) still classifies
+        // the fixture TLE as FRESH no matter what day the test runs.
+        $nowDt = new \DateTimeImmutable('now', new \DateTimeZone('UTC'));
+        $now = $nowDt->format('Y-m-d\TH:i:s.u\Z');
+        $epoch = $nowDt->modify('-15 hours')->format('Y-m-d\TH:i:s.u\Z'); // < 48h → FRESH
         $pdo = $this->db->pdo();
 
         // Three satellites: ISS in stations + active, STARLINK-1 in starlink + active,
