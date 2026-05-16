@@ -46,6 +46,7 @@ use SatTrackr\Http\Controllers\ReentryListController;
 use SatTrackr\Http\Controllers\SatellitePassesController;
 use SatTrackr\Http\Controllers\SpaceWeather24hController;
 use SatTrackr\Http\Controllers\SpaceWeatherNowController;
+use SatTrackr\Http\Controllers\StatsController;
 use SatTrackr\Http\Controllers\UpcomingLaunchesController;
 use SatTrackr\Http\Middleware\CorsMiddleware;
 use SatTrackr\Http\Middleware\ErrorHandlerMiddleware;
@@ -203,6 +204,9 @@ final class Container
             // Space weather endpoints (Phase 4 chunk 3)
             SpaceWeatherNowController::class   => static fn (DIContainer $c) => new SpaceWeatherNowController($c->get(Connection::class)),
             SpaceWeather24hController::class   => static fn (DIContainer $c) => new SpaceWeather24hController($c->get(Connection::class)),
+
+            // Stats dashboard (Phase 4 chunk 5)
+            StatsController::class             => static fn (DIContainer $c) => new StatsController($c->get(Connection::class)),
 
             // Pass predictions (Phase 2 chunk 6)
             SatellitePassesController::class  => static fn (DIContainer $c) => new SatellitePassesController(

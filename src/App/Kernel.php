@@ -23,6 +23,7 @@ use SatTrackr\Http\Controllers\ReentryListController;
 use SatTrackr\Http\Controllers\SatellitePassesController;
 use SatTrackr\Http\Controllers\SpaceWeather24hController;
 use SatTrackr\Http\Controllers\SpaceWeatherNowController;
+use SatTrackr\Http\Controllers\StatsController;
 use SatTrackr\Http\Controllers\UpcomingLaunchesController;
 use SatTrackr\Http\Controllers\Text\TextCatalogController;
 use SatTrackr\Http\Controllers\Text\TextConjunctionListController;
@@ -34,6 +35,7 @@ use SatTrackr\Http\Controllers\Text\TextLaunchDetailController;
 use SatTrackr\Http\Controllers\Text\TextLaunchListController;
 use SatTrackr\Http\Controllers\Text\TextSatelliteController;
 use SatTrackr\Http\Controllers\Text\TextSearchController;
+use SatTrackr\Http\Controllers\Text\TextStatsController;
 use SatTrackr\Http\Middleware\CorsMiddleware;
 use SatTrackr\Http\Middleware\ErrorHandlerMiddleware;
 use SatTrackr\Http\Middleware\ETagMiddleware;
@@ -89,6 +91,8 @@ final class Kernel
         $app->get('/text/conjunctions', TextConjunctionListController::class);
         // Space weather text view (Phase 4 chunk 3)
         $app->get('/text/space-weather', TextSpaceWeatherController::class);
+        // Stats dashboard (Phase 4 chunk 5)
+        $app->get('/text/stats', TextStatsController::class);
 
         // API routes — Slim binds the group closure to its CallableResolver,
         // which requires a non-static closure (it can't bind $this to a static).
@@ -119,6 +123,8 @@ final class Kernel
             // Space weather (Phase 4 chunk 3)
             $api->get('/space-weather/now', SpaceWeatherNowController::class);
             $api->get('/space-weather/24h', SpaceWeather24hController::class);
+            // Stats dashboard (Phase 4 chunk 5)
+            $api->get('/stats/{breakdown:[a-z-]+}', StatsController::class);
         })
             ->add(JsonResponseMiddleware::class)
             ->add(ETagMiddleware::class);

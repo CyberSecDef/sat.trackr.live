@@ -106,6 +106,8 @@ export class SatTopBar extends LitElement {
         <span class="divider" aria-hidden="true">·</span>
         <a class="item" href="/text/conjunctions">§ conjunctions</a>
         <span class="divider" aria-hidden="true">·</span>
+        <a class="item" href="/text/stats">§ stats</a>
+        <span class="divider" aria-hidden="true">·</span>
         <span class="item item--placeholder" title="coming in Phase 4 chunk 6">§ events</span>
       </nav>
       <div class="actions">

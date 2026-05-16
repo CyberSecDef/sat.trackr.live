@@ -16,6 +16,7 @@ use SatTrackr\Http\Controllers\Text\TextConjunctionListController;
 use SatTrackr\Http\Controllers\Text\TextLaunchListController;
 use SatTrackr\Http\Controllers\Text\TextSatelliteController;
 use SatTrackr\Http\Controllers\Text\TextSearchController;
+use SatTrackr\Http\Controllers\Text\TextStatsController;
 use SatTrackr\Services\TextRenderer;
 use Slim\Exception\HttpNotFoundException;
 use Slim\Psr7\Factory\ServerRequestFactory;
@@ -260,6 +261,18 @@ final class TextRoutesTest extends TestCase
             '/text/launches/no-such-id',
             ['id' => 'no-such-id']
         );
+    }
+
+    public function testStatsRendersTotalAndTypeBreakdown(): void
+    {
+        $body = $this->invoke(new TextStatsController($this->db, $this->renderer), '/text/stats');
+        $this->assertStringContainsString('Catalog stats', $body);
+        $this->assertStringContainsString('Total satellites tracked', $body);
+        // Seed satellites don't set object_type so they all bucket as
+        // UNKNOWN — what matters is that the breakdown table renders.
+        $this->assertStringContainsString('UNKNOWN', $body);
+        $this->assertStringContainsString('§ Top countries', $body);
+        $this->assertStringContainsString('§ Launches per year', $body);
     }
 
     public function testConjunctionsListsInWindowSortedByProbability(): void
