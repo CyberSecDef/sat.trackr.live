@@ -49,9 +49,20 @@ Part of the **trackr.live family** alongside [trackr.live](https://trackr.live) 
 | 5. Light pollution overlay | ✅ done | NASA's 2012 VIIRS Earth-at-Night composite (3600×1800 JPG, 794 KB committed at `public/textures/earth-at-night.jpg`) — much lighter than the 40 MB budget. `LightPollutionLayer` adds a `Cesium.SingleTileImageryProvider` on top of the base imagery with `dayAlpha=0` + `nightAlpha=0.85` so city lights show only on the dark side, composing naturally with the chunk-1 terminator. Genuinely lazy-loaded: the JPG isn't requested until the user toggles "Light pollution" on for the first time. Bundle: 133.7 → 134.8 KB gzipped main (+0.3 KB — layer file only). **149 PHP / 76 JS passing.** |
 | 6. Polish + Playwright + Phase 4 outline | ✅ done | "Above horizon now?" line in `§ Visibility` (live elevation/azimuth + compass octant, accent-colored Yes/No verdict, updated every 500ms via the existing `tickLive()` loop). Bundle audit: 41.87 KB gzipped main, well under the 250 KB target. Lazy-load verified: VIIRS JPG isn't requested until "Light pollution" is toggled on for the first time; ground-station catalog + marquee registry inlined. Playwright + chromium installed; 3 smoke specs (`tests/E2E/smoke.spec.ts`) pass in 9.8s — `make test-e2e` runs them. Visual-diff baselines for the Cesium globe deferred to Phase 4 chunk 6 polish where the new HTML surfaces are easier to baseline. `docs/phase4.md` outlines situational-awareness chunks. **149 PHP / 76 JS / 3 e2e passing.** |
 
-### Phase 4 — Situational awareness (⏳ next)
+### Phase 4 — Situational awareness (🚧 in progress)
 
-See [`docs/phase4.md`](docs/phase4.md) for the outline. TL;DR: SOCRATES conjunctions, NOAA SWPC space-weather widget, OVATION aurora overlay, stats dashboard, events feed + Atom 1.0 syndication.
+| Chunk | Status | What it adds |
+|---|---|---|
+| 1. Conjunctions ingest + schema | ✅ done | New `conjunctions` table (migration 12) holds CelesTrak SOCRATES Plus close-approach predictions (TCA, miss distance, relative speed, max probability, dilution). `SocratesClient` fetches the canonical `sort-minRange.csv`; `SocratesCsvParser` (7 unit specs, fixture-driven) decodes the 11-column shape and normalizes TCAs to ISO-with-Z; `SocratesIngester` (5 feature specs) wraps fetch+parse in a single transaction with UPSERT on `(primary, secondary, TCA)` for re-run idempotency. `--max-tca-hours=N` window trims to the user-visible horizon (default 168h). `bin/console ingest:socrates` + `make ingest-socrates` wraps it. **Plan swerve, explicit:** `docs/phase4.md` §II row 2 said "HTML scrape" but the live site exposes a clean CSV — going with CSV, no info lost. Real run: **145,392 conjunctions ingested in 11.36s**. Top of the table is realistic — Starlink × Starlink @ 21m / p=0.45, Starlink × CZ-2C rocket body @ 23m / p=0.16. **161 PHP / 76 JS passing.** |
+| 2. Conjunctions API + text view | ⏳ pending | `/api/v1/conjunctions/{upcoming,{primary}/{secondary}}` + `/text/conjunctions` + topbar `§ conjunctions` |
+| 3. Space weather ingest + widget | ⏳ pending | NOAA SWPC ingester + `<sat-space-weather-pill>` + 24h trend popover |
+| 4. Aurora overlay | ⏳ pending | OVATION raster, ~250KB lazy, 5th `§ overlays` toggle |
+| 5. Stats dashboard | ⏳ pending | `/stats` + `/api/v1/stats/{breakdown}` |
+| 6. Events feed + Atom + station tooltip | ⏳ pending | `/events`, `/events.atom`, click-station tooltip (Phase 3 chunk 4 fold-in) |
+| 7. N2YO magnitude enrichment | ⏳ pending | N2YOClient + quota guard + Mag column in §Visibility (Phase 2 chunk 6 fold-in) |
+| 8. Real glTF + Playwright baselines + Phase 5 outline | ⏳ pending | Real glTF for marquee + visual-diff baselines (Phase 3 chunk 3 fold-in) |
+
+See [`docs/phase4.md`](docs/phase4.md) for the locked plan, decisions, dependencies, and risk.
 
 See [`docs/phase3.md`](docs/phase3.md) for the locked Phase 3 plan, decisions, dependencies, and risk.
 
@@ -139,7 +150,7 @@ URL shapes already wired:
 
 ```bash
 # Schema management
-make migrate                          # apply migrations (11 total: 6 Phase 1 + 5 Phase 2 chunk 1)
+make migrate                          # apply migrations (12 total: 6 Phase 1 + 5 Phase 2 chunk 1 + 1 Phase 4 chunk 1)
 make migrate-status                   # show what's applied vs pending
 make rollback                         # reverse the most recent batch
 make make-migration NAME=add_foo      # scaffold a new migration file
@@ -151,6 +162,7 @@ make ingest-satcat                    # CelesTrak SATCAT — operator/country/la
 make ingest-satcat-group GROUP=starlink  # just one SATCAT group
 make ingest-ll2                       # Launch Library 2 — 50 upcoming + 100 previous launches in ~4s (Phase 2 chunk 3)
 make ingest-spacetrack                # Space-Track TIP — predicted reentries in ~1.2s (Phase 2 chunk 4)
+make ingest-socrates                  # CelesTrak SOCRATES — ~145k close-approach predictions in ~12s (Phase 4 chunk 1)
 make pass-cache-prune                 # Sweep expired pass-cache rows (Phase 2 chunk 6)
 make build-skybox                     # Regenerate BSC5 starfield cubemap into public/textures/skybox/ (Phase 3 chunk 1)
 make health                           # PHP / pdo_sqlite / DB / per-table row counts
@@ -339,6 +351,7 @@ See [`docs/phase1.md` § X](docs/phase1.md) for the full deploy notes. TL;DR:
    0 * * * *     cd ~/sat.trackr.live && make ingest-ll2 MODE=upcoming   >> storage/logs/cron.log 2>&1
    0 */6 * * *   cd ~/sat.trackr.live && make ingest-ll2 MODE=previous   >> storage/logs/cron.log 2>&1
    0 */12 * * *  cd ~/sat.trackr.live && make ingest-spacetrack >> storage/logs/cron.log 2>&1
+   0 */8 * * *   cd ~/sat.trackr.live && make ingest-socrates   >> storage/logs/cron.log 2>&1
    30 4 * * *    cd ~/sat.trackr.live && make pass-cache-prune  >> storage/logs/cron.log 2>&1
    ```
 
