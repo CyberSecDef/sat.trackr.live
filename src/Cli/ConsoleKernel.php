@@ -9,6 +9,7 @@ use SatTrackr\Cli\Commands\HealthCommand;
 use SatTrackr\Cli\Commands\IngestCelesTrakCommand;
 use SatTrackr\Cli\Commands\IngestLaunchLibraryCommand;
 use SatTrackr\Cli\Commands\IngestSatCatCommand;
+use SatTrackr\Cli\Commands\IngestSocratesCommand;
 use SatTrackr\Cli\Commands\IngestSpaceTrackCommand;
 use SatTrackr\Cli\Commands\PruneCacheCommand;
 use SatTrackr\Cli\Commands\MakeMigrationCommand;
@@ -31,6 +32,7 @@ final class ConsoleKernel
         $app->add($container->get(IngestSatCatCommand::class));
         $app->add($container->get(IngestLaunchLibraryCommand::class));
         $app->add($container->get(IngestSpaceTrackCommand::class));
+        $app->add($container->get(IngestSocratesCommand::class));
         $app->add($container->get(PruneCacheCommand::class));
         $app->add($container->get(HealthCommand::class));
 

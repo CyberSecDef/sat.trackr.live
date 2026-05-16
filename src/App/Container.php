@@ -15,6 +15,7 @@ use Psr\Log\LoggerInterface;
 use SatTrackr\Cli\Commands\HealthCommand;
 use SatTrackr\Cli\Commands\IngestCelesTrakCommand;
 use SatTrackr\Cli\Commands\IngestLaunchLibraryCommand;
+use SatTrackr\Cli\Commands\IngestSocratesCommand;
 use SatTrackr\Cli\Commands\IngestSpaceTrackCommand;
 use SatTrackr\Cli\Commands\PruneCacheCommand;
 use SatTrackr\Cli\Commands\IngestSatCatCommand;
@@ -53,6 +54,9 @@ use SatTrackr\Ingest\CelesTrakIngester;
 use SatTrackr\Ingest\LaunchLibraryClient;
 use SatTrackr\Ingest\LaunchLibraryIngester;
 use SatTrackr\Ingest\SpaceTrackClient;
+use SatTrackr\Ingest\SocratesClient;
+use SatTrackr\Ingest\SocratesCsvParser;
+use SatTrackr\Ingest\SocratesIngester;
 use SatTrackr\Ingest\SpaceTrackIngester;
 use SatTrackr\Ingest\SatCatClient;
 use SatTrackr\Ingest\SatCatIngester;
@@ -236,6 +240,16 @@ final class Container
                 logger: $c->get(LoggerInterface::class),
             ),
 
+            // SOCRATES (Phase 4 chunk 1)
+            SocratesClient::class    => static fn (DIContainer $c) => new SocratesClient($c->get(GuzzleClient::class)),
+            SocratesCsvParser::class => static fn () => new SocratesCsvParser(),
+            SocratesIngester::class  => static fn (DIContainer $c) => new SocratesIngester(
+                client: $c->get(SocratesClient::class),
+                parser: $c->get(SocratesCsvParser::class),
+                db:     $c->get(Connection::class),
+                logger: $c->get(LoggerInterface::class),
+            ),
+
             // Pass prediction (Phase 2 chunk 6)
             PassCache::class      => static fn (DIContainer $c) => new PassCache($c->get(Connection::class)),
             PassCalculator::class => static fn (DIContainer $c) => new PassCalculator(
@@ -264,6 +278,10 @@ final class Container
             ),
             IngestSpaceTrackCommand::class => static fn (DIContainer $c) => new IngestSpaceTrackCommand(
                 $c->get(SpaceTrackIngester::class),
+                $c->get(Connection::class),
+            ),
+            IngestSocratesCommand::class  => static fn (DIContainer $c) => new IngestSocratesCommand(
+                $c->get(SocratesIngester::class),
                 $c->get(Connection::class),
             ),
             PruneCacheCommand::class      => static fn (DIContainer $c) => new PruneCacheCommand(
