@@ -16,11 +16,14 @@ use SatTrackr\Http\Controllers\SatelliteListController;
 use SatTrackr\Http\Controllers\SatelliteTleController;
 use SatTrackr\Http\Controllers\SearchController;
 use SatTrackr\Http\Controllers\SpaShellController;
+use SatTrackr\Http\Controllers\ConjunctionDetailController;
+use SatTrackr\Http\Controllers\ConjunctionListController;
 use SatTrackr\Http\Controllers\ReentryDetailController;
 use SatTrackr\Http\Controllers\ReentryListController;
 use SatTrackr\Http\Controllers\SatellitePassesController;
 use SatTrackr\Http\Controllers\UpcomingLaunchesController;
 use SatTrackr\Http\Controllers\Text\TextCatalogController;
+use SatTrackr\Http\Controllers\Text\TextConjunctionListController;
 use SatTrackr\Http\Controllers\Text\TextDecaysController;
 use SatTrackr\Http\Controllers\Text\TextGroupController;
 use SatTrackr\Http\Controllers\Text\TextGroupsController;
@@ -79,6 +82,8 @@ final class Kernel
         $app->get('/text/launches/{id:[a-fA-F0-9-]+}', TextLaunchDetailController::class);
         // Reentries text view (Phase 2 chunk 4D)
         $app->get('/text/decays', TextDecaysController::class);
+        // Conjunctions text view (Phase 4 chunk 2)
+        $app->get('/text/conjunctions', TextConjunctionListController::class);
 
         // API routes — Slim binds the group closure to its CallableResolver,
         // which requires a non-static closure (it can't bind $this to a static).
@@ -102,6 +107,10 @@ final class Kernel
             // before {norad}.
             $api->get('/reentries/upcoming', ReentryListController::class);
             $api->get('/reentries/{norad:[0-9]+}', ReentryDetailController::class);
+            // Conjunctions (Phase 4 chunk 2) — order matters: literal /upcoming
+            // before the {primary}/{secondary} pair pattern.
+            $api->get('/conjunctions/upcoming', ConjunctionListController::class);
+            $api->get('/conjunctions/{primary:[0-9]+}/{secondary:[0-9]+}', ConjunctionDetailController::class);
         })
             ->add(JsonResponseMiddleware::class)
             ->add(ETagMiddleware::class);

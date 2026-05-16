@@ -37,6 +37,8 @@ use SatTrackr\Http\Controllers\SatelliteListController;
 use SatTrackr\Http\Controllers\SatelliteTleController;
 use SatTrackr\Http\Controllers\SearchController;
 use SatTrackr\Http\Controllers\SpaShellController;
+use SatTrackr\Http\Controllers\ConjunctionDetailController;
+use SatTrackr\Http\Controllers\ConjunctionListController;
 use SatTrackr\Http\Controllers\ReentryDetailController;
 use SatTrackr\Http\Controllers\ReentryListController;
 use SatTrackr\Http\Controllers\SatellitePassesController;
@@ -62,6 +64,7 @@ use SatTrackr\Ingest\SatCatClient;
 use SatTrackr\Ingest\SatCatIngester;
 use SatTrackr\Ingest\TleParser;
 use SatTrackr\Http\Controllers\Text\TextCatalogController;
+use SatTrackr\Http\Controllers\Text\TextConjunctionListController;
 use SatTrackr\Http\Controllers\Text\TextDecaysController;
 use SatTrackr\Http\Controllers\Text\TextGroupController;
 use SatTrackr\Http\Controllers\Text\TextGroupsController;
@@ -182,6 +185,10 @@ final class Container
             // Reentry endpoints (Phase 2 chunk 4)
             ReentryListController::class      => static fn (DIContainer $c) => new ReentryListController($c->get(Connection::class)),
             ReentryDetailController::class    => static fn (DIContainer $c) => new ReentryDetailController($c->get(Connection::class)),
+
+            // Conjunction endpoints (Phase 4 chunk 2)
+            ConjunctionListController::class   => static fn (DIContainer $c) => new ConjunctionListController($c->get(Connection::class)),
+            ConjunctionDetailController::class => static fn (DIContainer $c) => new ConjunctionDetailController($c->get(Connection::class)),
 
             // Pass predictions (Phase 2 chunk 6)
             SatellitePassesController::class  => static fn (DIContainer $c) => new SatellitePassesController(

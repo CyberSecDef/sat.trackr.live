@@ -12,6 +12,7 @@ use SatTrackr\Http\Controllers\Text\TextDecaysController;
 use SatTrackr\Http\Controllers\Text\TextGroupController;
 use SatTrackr\Http\Controllers\Text\TextGroupsController;
 use SatTrackr\Http\Controllers\Text\TextLaunchDetailController;
+use SatTrackr\Http\Controllers\Text\TextConjunctionListController;
 use SatTrackr\Http\Controllers\Text\TextLaunchListController;
 use SatTrackr\Http\Controllers\Text\TextSatelliteController;
 use SatTrackr\Http\Controllers\Text\TextSearchController;
@@ -100,6 +101,19 @@ final class TextRoutesTest extends TestCase
                     (norad_id, predicted_decay, confidence_window_hours, source, risk_score, raw_message, created_at, updated_at)
                     VALUES
                       (25544, '{$soon}', 6.0, 'SPACE_TRACK_TIP', 4.2, '{\"NORAD_CAT_ID\":\"25544\"}', '{$now}', '{$now}')");
+
+        // Phase 4 chunk 2 fixtures: two conjunctions involving ISS,
+        // one in the 24h window (high probability), one outside it.
+        $tcaSoon = (new \DateTimeImmutable('now', new \DateTimeZone('UTC')))->modify('+8 hours')->format('Y-m-d\TH:i:s\Z');
+        $tcaLater = (new \DateTimeImmutable('now', new \DateTimeZone('UTC')))->modify('+10 days')->format('Y-m-d\TH:i:s\Z');
+        $pdo->exec("INSERT INTO conjunctions
+                    (norad_id_primary, name_primary, dse_primary,
+                     norad_id_secondary, name_secondary, dse_secondary,
+                     tca, tca_range_km, tca_relative_speed_km_s, max_probability, dilution,
+                     created_at, updated_at)
+                    VALUES
+                      (25544, 'ISS (ZARYA) [+]',  1.0, 44713, 'STARLINK-1007 [+]', 1.5, '{$tcaSoon}',  0.080, 11.3, 0.2500, 0.05, '{$now}', '{$now}'),
+                      (25544, 'ISS (ZARYA) [+]',  1.5, 44713, 'STARLINK-1007 [+]', 2.0, '{$tcaLater}', 0.500, 10.0, 0.0001, 0.30, '{$now}', '{$now}')");
     }
 
     public function testCatalogListReturns200WithBothSatellites(): void
@@ -246,6 +260,40 @@ final class TextRoutesTest extends TestCase
             '/text/launches/no-such-id',
             ['id' => 'no-such-id']
         );
+    }
+
+    public function testConjunctionsListsInWindowSortedByProbability(): void
+    {
+        $body = $this->invoke(
+            new TextConjunctionListController($this->db, $this->renderer),
+            '/text/conjunctions'
+        );
+        $this->assertStringContainsString('Predicted conjunctions', $body);
+        $this->assertStringContainsString('ISS (ZARYA)', $body);
+        $this->assertStringContainsString('STARLINK-1007', $body);
+        $this->assertStringContainsString('badge--high', $body);    // p=0.25 → high; range 80m → high
+        $this->assertStringContainsString('T-', $body);             // countdown
+        $this->assertStringContainsString('2.50E-1', $body);        // probability formatting
+    }
+
+    public function testConjunctionsWithinHoursClampsWindow(): void
+    {
+        // 24h window excludes the +10d conjunction.
+        $body = $this->invoke(
+            new TextConjunctionListController($this->db, $this->renderer),
+            '/text/conjunctions?within_hours=24'
+        );
+        $this->assertStringContainsString('2.50E-1', $body);
+        $this->assertStringNotContainsString('1.00E-4', $body);
+    }
+
+    public function testConjunctionsEmptyAfterStrictMinProb(): void
+    {
+        $body = $this->invoke(
+            new TextConjunctionListController($this->db, $this->renderer),
+            '/text/conjunctions?within_hours=720&min_probability=0.5'
+        );
+        $this->assertStringContainsString('No conjunctions match', $body);
     }
 
     public function testDecaysListsUpcomingReentryWithCountdownAndRiskBadge(): void
