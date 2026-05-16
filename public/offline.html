@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#0a0e27">
+  <title>Offline — sat.trackr.live</title>
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+  <link rel="manifest" href="/manifest.webmanifest">
+  <style>
+    :root {
+      --bg: #0a0e27;
+      --text: #e0e6f0;
+      --text-muted: #8a96b3;
+      --accent: #00d9ff;
+      --border: #1f2950;
+      --font-body: 'Inter', system-ui, -apple-system, 'Segoe UI', sans-serif;
+      --font-mono: 'JetBrains Mono', 'IBM Plex Mono', ui-monospace, Menlo, monospace;
+    }
+    * { box-sizing: border-box; }
+    html, body { margin: 0; padding: 0; height: 100%; }
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: var(--font-body);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+    }
+    main {
+      max-width: 32rem;
+      padding: 2rem 1.5rem;
+      text-align: center;
+    }
+    h1 {
+      font-family: var(--font-mono);
+      font-size: 1.4rem;
+      font-weight: 500;
+      letter-spacing: 0.02em;
+    }
+    p { color: var(--text-muted); line-height: 1.55; }
+    .glyph {
+      font-size: 3rem;
+      color: var(--accent);
+      line-height: 1;
+      margin-bottom: 0.75rem;
+    }
+    ul {
+      list-style: none;
+      padding: 0;
+      margin: 1.5rem 0 0;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+      justify-content: center;
+    }
+    a {
+      color: var(--accent);
+      text-decoration: none;
+      font-family: var(--font-mono);
+      font-size: 0.9rem;
+      padding: 0.3rem 0.65rem;
+      border: 1px solid var(--border);
+      border-radius: 3px;
+    }
+    a:hover { border-color: var(--accent); }
+  </style>
+</head>
+<body>
+  <main>
+    <div class="glyph">⊕</div>
+    <h1>Offline</h1>
+    <p>
+      You're not online, and this page isn't in the service-worker cache yet.
+      Try one of the pages you've visited recently:
+    </p>
+    <ul>
+      <li><a href="/text">Catalog</a></li>
+      <li><a href="/text/groups">Groups</a></li>
+      <li><a href="/text/events">Events</a></li>
+      <li><a href="/text/space-weather">Space weather</a></li>
+    </ul>
+  </main>
+</body>
+</html>

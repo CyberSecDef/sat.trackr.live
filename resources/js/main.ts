@@ -16,5 +16,8 @@ import './ui/NoWebGL';
 import './globe/Globe';
 import './App';
 
+import { registerServiceWorker } from './pwa/register-sw';
+registerServiceWorker();
+
 // The pre-paint theme is applied by an inline script in shell.php; nothing
 // to do here at startup beyond registering elements.
