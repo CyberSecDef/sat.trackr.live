@@ -6,6 +6,7 @@ import { twoline2satrec } from 'satellite.js';
 import { getGroupTles, ApiError } from '../api/client';
 import { Clock } from '../time/Clock';
 import { createImageryProvider } from './imagery';
+import { AuroraOverlayLayer } from './AuroraOverlayLayer';
 import { GroundStationLayer } from './GroundStationLayer';
 import { LightPollutionLayer } from './LightPollutionLayer';
 import { MarqueeShapeLayer } from './MarqueeShapeLayer';
@@ -29,6 +30,7 @@ export class Globe {
   public marquee?: MarqueeShapeLayer;
   public stations?: GroundStationLayer;
   public lightPollution?: LightPollutionLayer;
+  public aurora?: AuroraOverlayLayer;
   public selection?: SelectionController;
   public clock?: Clock;
   private ribbonTickUnsub: (() => void) | null = null;
@@ -36,7 +38,7 @@ export class Globe {
   private overlayUnsub: (() => void) | null = null;
   private selectedNorad: number | null = null;
   private overlayState: OverlayState = {
-    ribbons: true, marquee: true, stations: false, lightPollution: false,
+    ribbons: true, marquee: true, stations: false, lightPollution: false, aurora: false,
   };
 
   async init(
@@ -104,6 +106,7 @@ export class Globe {
     this.marquee = new MarqueeShapeLayer(viewer.scene);
     this.stations = new GroundStationLayer(viewer.scene);
     this.lightPollution = new LightPollutionLayer(viewer);
+    this.aurora = new AuroraOverlayLayer(viewer);
     this.selection = new SelectionController(viewer, opts.onSelect);
     opts.onClockReady?.(this.clock);
 
@@ -114,6 +117,7 @@ export class Globe {
       this.overlayState = state;
       this.stations?.setVisible(state.stations);
       this.lightPollution?.setVisible(state.lightPollution);
+      this.aurora?.setVisible(state.aurora);
       // Ribbon + marquee are gated by selection AND the overlay flag;
       // re-apply selection so a flip to "off" tears them down.
       this.setRibbonTarget(this.selectedNorad);
@@ -224,6 +228,7 @@ export class Globe {
     this.marquee?.destroy();
     this.stations?.destroy();
     this.lightPollution?.destroy();
+    this.aurora?.destroy();
     this.layer?.destroy();
     this.viewer?.destroy();
     this.viewer = undefined;
@@ -232,6 +237,7 @@ export class Globe {
     this.marquee = undefined;
     this.stations = undefined;
     this.lightPollution = undefined;
+    this.aurora = undefined;
     this.selection = undefined;
   }
 }

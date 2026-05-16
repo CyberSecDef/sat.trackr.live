@@ -55,7 +55,7 @@ describe('OverlayService', () => {
     storage.setItem('sat:overlays', '{not valid json');
     const svc = new OverlayService(storage);
     expect(svc.current()).toEqual({
-      ribbons: true, marquee: true, stations: false, lightPollution: false,
+      ribbons: true, marquee: true, stations: false, lightPollution: false, aurora: false,
     });
   });
 

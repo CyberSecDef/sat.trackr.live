@@ -16,7 +16,7 @@
  * ObserverService, the constructor accepts injectable storage so
  * vitest can swap a fake.
  */
-export type OverlayKey = 'ribbons' | 'marquee' | 'stations' | 'lightPollution';
+export type OverlayKey = 'ribbons' | 'marquee' | 'stations' | 'lightPollution' | 'aurora';
 
 export type OverlayState = Record<OverlayKey, boolean>;
 
@@ -27,6 +27,7 @@ const DEFAULT_STATE: OverlayState = {
   marquee: true,
   stations: false,
   lightPollution: false,
+  aurora: false,
 };
 
 interface StorageLike {
@@ -80,6 +81,7 @@ export class OverlayService {
         marquee:        typeof parsed.marquee        === 'boolean' ? parsed.marquee        : DEFAULT_STATE.marquee,
         stations:       typeof parsed.stations       === 'boolean' ? parsed.stations       : DEFAULT_STATE.stations,
         lightPollution: typeof parsed.lightPollution === 'boolean' ? parsed.lightPollution : DEFAULT_STATE.lightPollution,
+        aurora:         typeof parsed.aurora         === 'boolean' ? parsed.aurora         : DEFAULT_STATE.aurora,
       };
     } catch {
       return { ...DEFAULT_STATE };

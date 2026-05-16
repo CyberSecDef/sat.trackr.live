@@ -34,6 +34,12 @@ const OVERLAYS: ReadonlyArray<OverlayMeta> = [
     label: 'Light pollution',
     description: 'NASA VIIRS 2012 city-lights raster — visible on the night side only, lazy-loaded',
   },
+  {
+    key: 'aurora',
+    glyph: '✦',
+    label: 'Aurora forecast',
+    description: 'NOAA OVATION 30-min aurora probability raster — refreshed every 15min server-side',
+  },
 ];
 
 /**
@@ -51,6 +57,7 @@ export class SatOverlaysMenu extends LitElement {
     marquee: true,
     stations: false,
     lightPollution: false,
+    aurora: false,
   };
 
   private unsubscribe: (() => void) | null = null;

@@ -16,6 +16,7 @@ use SatTrackr\Cli\Commands\HealthCommand;
 use SatTrackr\Cli\Commands\IngestCelesTrakCommand;
 use SatTrackr\Cli\Commands\IngestLaunchLibraryCommand;
 use SatTrackr\Cli\Commands\IngestSocratesCommand;
+use SatTrackr\Cli\Commands\IngestOvationCommand;
 use SatTrackr\Cli\Commands\IngestSpaceTrackCommand;
 use SatTrackr\Cli\Commands\IngestSwpcCommand;
 use SatTrackr\Cli\Commands\PruneCacheCommand;
@@ -62,6 +63,9 @@ use SatTrackr\Ingest\SpaceTrackClient;
 use SatTrackr\Ingest\SocratesClient;
 use SatTrackr\Ingest\SocratesCsvParser;
 use SatTrackr\Ingest\SocratesIngester;
+use SatTrackr\Ingest\AuroraRasterGenerator;
+use SatTrackr\Ingest\OvationClient;
+use SatTrackr\Ingest\OvationIngester;
 use SatTrackr\Ingest\SpaceTrackIngester;
 use SatTrackr\Ingest\SwpcClient;
 use SatTrackr\Ingest\SwpcIngester;
@@ -275,6 +279,17 @@ final class Container
                 logger: $c->get(LoggerInterface::class),
             ),
 
+            // OVATION aurora overlay (Phase 4 chunk 4)
+            OvationClient::class          => static fn (DIContainer $c) => new OvationClient($c->get(GuzzleClient::class)),
+            AuroraRasterGenerator::class  => static fn () => new AuroraRasterGenerator(),
+            OvationIngester::class        => static fn (DIContainer $c) => new OvationIngester(
+                client:         $c->get(OvationClient::class),
+                generator:      $c->get(AuroraRasterGenerator::class),
+                outputPng:      $rootDir . '/public/textures/aurora-latest.png',
+                outputMetaJson: $rootDir . '/public/textures/aurora-latest.json',
+                logger:         $c->get(LoggerInterface::class),
+            ),
+
             // Pass prediction (Phase 2 chunk 6)
             PassCache::class      => static fn (DIContainer $c) => new PassCache($c->get(Connection::class)),
             PassCalculator::class => static fn (DIContainer $c) => new PassCalculator(
@@ -308,6 +323,9 @@ final class Container
             IngestSocratesCommand::class  => static fn (DIContainer $c) => new IngestSocratesCommand(
                 $c->get(SocratesIngester::class),
                 $c->get(Connection::class),
+            ),
+            IngestOvationCommand::class   => static fn (DIContainer $c) => new IngestOvationCommand(
+                $c->get(OvationIngester::class),
             ),
             IngestSwpcCommand::class      => static fn (DIContainer $c) => new IngestSwpcCommand(
                 $c->get(SwpcIngester::class),

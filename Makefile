@@ -142,6 +142,10 @@ ingest-socrates: ## Run SOCRATES conjunction ingester (HOURS=N TCA window, defau
 ingest-swpc: ## Snapshot NOAA SWPC space-weather indicators (Phase 4 chunk 3)
 	php bin/console ingest:swpc
 
+.PHONY: ingest-ovation
+ingest-ovation: ## Refresh the NOAA OVATION aurora-forecast raster (Phase 4 chunk 4)
+	php bin/console ingest:ovation
+
 .PHONY: pass-cache-prune
 pass-cache-prune: ## Sweep expired rows from pass_cache (Phase 2 chunk 6)
 	php bin/console pass-cache:prune
