@@ -261,6 +261,23 @@ export class SatGlobe extends LitElement {
       position: absolute;
       inset: 0;
     }
+
+    /* The widgets.css loaded in shell.php doesn't pierce this Lit
+       component's Shadow DOM, so the Cesium viewer's internal divs
+       default to a 300×150 canvas inside an unsized .cesium-widget.
+       Inline the essential sizing rules so the viewer fills its
+       container. */
+    .container .cesium-viewer,
+    .container .cesium-viewer-cesiumWidgetContainer,
+    .container .cesium-widget,
+    .container .cesium-widget canvas {
+      width: 100%;
+      height: 100%;
+      display: block;
+    }
+    .container .cesium-widget canvas {
+      touch-action: none;
+    }
     .credit {
       position: absolute;
       bottom: 0.4rem;

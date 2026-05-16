@@ -48,4 +48,10 @@ export default defineConfig({
     cors: true,
     origin: process.env.VITE_DEV_ORIGIN ?? 'http://localhost:5173',
   },
+
+  // Vitest config — limit to tests/Js so it doesn't pick up the
+  // Playwright e2e specs under tests/E2E (those run via `make test-e2e`).
+  test: {
+    include: ['tests/Js/**/*.{test,spec}.ts'],
+  },
 });
