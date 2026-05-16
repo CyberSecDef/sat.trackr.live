@@ -22,13 +22,27 @@ import { findMarqueeSpec, type MarqueeSpec, type ShapeKind } from './marqueeRegi
  * scaled to ~5km on screen so the user can actually see them when
  * they zoom in to inspect.
  */
+/**
+ * Cesium has two distinct primitive types we use here:
+ *   - Cesium.Primitive  — procedural BoxGeometry / CylinderGeometry
+ *   - Cesium.Model       — loaded from a glTF/glb URL via fromGltfAsync()
+ *
+ * Both have a modelMatrix field we can update each tick; both can be
+ * .add()ed to a PrimitiveCollection and .remove()d from one.
+ */
+type AnyPrimitive = Cesium.Primitive | Cesium.Model;
+
 export class MarqueeShapeLayer {
   private readonly primitives: Cesium.PrimitiveCollection;
   private active: {
     norad: number;
     spec: MarqueeSpec;
-    primitive: Cesium.Primitive;
+    primitive: AnyPrimitive;
   } | null = null;
+  /** Token incremented on every show() so async glTF loads from previous
+   * selections lose to the current selection in case the user re-clicks
+   * mid-load. */
+  private loadToken = 0;
 
   constructor(private readonly scene: Cesium.Scene) {
     this.primitives = scene.primitives.add(new Cesium.PrimitiveCollection());
@@ -55,7 +69,37 @@ export class MarqueeShapeLayer {
       return;
     }
     this.hide();
-    const primitive = this.buildPrimitive(spec, position);
+
+    if (spec.gltfUri) {
+      // Async path: render nothing until the model loads, then add it
+      // iff this satellite is still the active selection.
+      const myToken = ++this.loadToken;
+      const modelMatrix = matrixForPosition(position);
+      const scale = spec.visualScale;
+      void Cesium.Model.fromGltfAsync({
+        url: spec.gltfUri,
+        modelMatrix,
+        scale,
+      }).then((model: Cesium.Model) => {
+        if (myToken !== this.loadToken || this.scene.isDestroyed()) {
+          // Selection changed before the model finished loading.
+          return;
+        }
+        this.primitives.add(model);
+        this.active = { norad, spec, primitive: model };
+      }).catch((err: unknown) => {
+        // eslint-disable-next-line no-console
+        console.warn(`[MarqueeShapeLayer] glTF load failed for ${spec.label}, falling back to procedural primitive`, err);
+        if (myToken !== this.loadToken) return;
+        const primitive = this.buildProceduralPrimitive(spec, position);
+        this.primitives.add(primitive);
+        this.active = { norad, spec, primitive };
+      });
+      return;
+    }
+
+    // Synchronous procedural path (chunk-3A behavior — current default).
+    const primitive = this.buildProceduralPrimitive(spec, position);
     this.primitives.add(primitive);
     this.active = { norad, spec, primitive };
   }
@@ -102,7 +146,7 @@ export class MarqueeShapeLayer {
     return Cesium.Cartesian3.distance(cam, satellitePos) < LOD_DISTANCE_METERS;
   }
 
-  private buildPrimitive(spec: MarqueeSpec, position: Cesium.Cartesian3): Cesium.Primitive {
+  private buildProceduralPrimitive(spec: MarqueeSpec, position: Cesium.Cartesian3): Cesium.Primitive {
     const dx = spec.dimensionsMeters.x * spec.visualScale;
     const dy = spec.dimensionsMeters.y * spec.visualScale;
     const dz = spec.dimensionsMeters.z * spec.visualScale;

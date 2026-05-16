@@ -33,7 +33,7 @@ test.describe('SPA loads', () => {
     expect(fatalErrors, fatalErrors.join('\n')).toEqual([]);
   });
 
-  test('overlays menu opens and lists all four toggles', async ({ page }) => {
+  test('overlays menu opens and lists all five toggles', async ({ page }) => {
     await page.goto('/');
 
     // The overlays menu lives inside <sat-top-bar>'s shadow root.
@@ -47,10 +47,13 @@ test.describe('SPA loads', () => {
     const items = page.locator('sat-top-bar')
       .locator('sat-overlays-menu')
       .locator('div.item');
-    await expect(items).toHaveCount(4);
+    // Phase 3 chunk 4 shipped 4 toggles; Phase 4 chunk 4 added the
+    // 5th (Aurora forecast).
+    await expect(items).toHaveCount(5);
     await expect(items.nth(0)).toContainText(/Orbit ribbon/);
     await expect(items.nth(2)).toContainText(/Ground stations/);
     await expect(items.nth(3)).toContainText(/Light pollution/);
+    await expect(items.nth(4)).toContainText(/Aurora forecast/);
   });
 
   test('text catalog at /text returns a satellite list (no JS path)', async ({ page }) => {

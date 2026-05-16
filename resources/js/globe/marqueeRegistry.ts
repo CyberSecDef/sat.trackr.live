@@ -32,6 +32,20 @@ export interface MarqueeSpec {
   norad?: number;
   /** Optional name-prefix matcher (case-sensitive) for constellation entries. */
   namePrefix?: string;
+  /**
+   * Phase 4 chunk 8A — when set, MarqueeShapeLayer loads this glTF via
+   * `Cesium.Model.fromGltfAsync()` instead of building a procedural
+   * primitive.  Path is relative to the web root, e.g. `/models/iss.glb`.
+   * Files belong in `public/models/`; see `public/models/CREDITS.md`
+   * for the licensing checklist any new model must clear.
+   *
+   * Left undefined → falls back to the chunk-3A procedural primitive
+   * (Box / Cylinder / Panel by `shape`).  This is deliberate: shipping
+   * the swap-in *infrastructure* without paying the asset-acquisition
+   * tax means contributors can drop in real models per satellite as
+   * they get sourced, without touching MarqueeShapeLayer.
+   */
+  gltfUri?: string;
 }
 
 const C = (css: string) => Cesium.Color.fromCssColorString(css);
