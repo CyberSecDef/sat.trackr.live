@@ -7,6 +7,8 @@ import type {
   SatelliteDetailResponse,
   SatelliteListResponse,
   SearchResponse,
+  SpaceWeather24hResponse,
+  SpaceWeatherNowResponse,
   TleResponse,
 } from './types';
 
@@ -94,6 +96,14 @@ export async function getSatellitePasses(norad: number, query: PassesQuery): Pro
   if (query.days !== undefined) params.set('days', String(query.days));
   if (query.min_elevation_deg !== undefined) params.set('min_elevation_deg', String(query.min_elevation_deg));
   return getJson(`/satellites/${norad}/passes?${params.toString()}`);
+}
+
+export async function getSpaceWeatherNow(): Promise<SpaceWeatherNowResponse> {
+  return getJson('/space-weather/now');
+}
+
+export async function getSpaceWeather24h(): Promise<SpaceWeather24hResponse> {
+  return getJson('/space-weather/24h');
 }
 
 async function getJson<T>(path: string): Promise<T> {

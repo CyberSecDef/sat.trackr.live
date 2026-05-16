@@ -189,6 +189,25 @@ export interface PassesResponse {
   };
 }
 
+export interface SpaceWeatherSample {
+  sampled_at: string;
+  kp: number | null;
+  x_ray_flux: number | null;
+  x_ray_class: 'A' | 'B' | 'C' | 'M' | 'X' | null;
+  r_level: number | null;
+  s_level: number | null;
+  g_level: number | null;
+}
+
+export interface SpaceWeatherNowResponse {
+  data: SpaceWeatherSample;
+}
+
+export interface SpaceWeather24hResponse {
+  data: SpaceWeatherSample[];
+  meta: { count: number; since: string };
+}
+
 export interface ApiErrorBody {
   error: {
     code: string;

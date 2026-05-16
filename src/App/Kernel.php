@@ -21,10 +21,13 @@ use SatTrackr\Http\Controllers\ConjunctionListController;
 use SatTrackr\Http\Controllers\ReentryDetailController;
 use SatTrackr\Http\Controllers\ReentryListController;
 use SatTrackr\Http\Controllers\SatellitePassesController;
+use SatTrackr\Http\Controllers\SpaceWeather24hController;
+use SatTrackr\Http\Controllers\SpaceWeatherNowController;
 use SatTrackr\Http\Controllers\UpcomingLaunchesController;
 use SatTrackr\Http\Controllers\Text\TextCatalogController;
 use SatTrackr\Http\Controllers\Text\TextConjunctionListController;
 use SatTrackr\Http\Controllers\Text\TextDecaysController;
+use SatTrackr\Http\Controllers\Text\TextSpaceWeatherController;
 use SatTrackr\Http\Controllers\Text\TextGroupController;
 use SatTrackr\Http\Controllers\Text\TextGroupsController;
 use SatTrackr\Http\Controllers\Text\TextLaunchDetailController;
@@ -84,6 +87,8 @@ final class Kernel
         $app->get('/text/decays', TextDecaysController::class);
         // Conjunctions text view (Phase 4 chunk 2)
         $app->get('/text/conjunctions', TextConjunctionListController::class);
+        // Space weather text view (Phase 4 chunk 3)
+        $app->get('/text/space-weather', TextSpaceWeatherController::class);
 
         // API routes — Slim binds the group closure to its CallableResolver,
         // which requires a non-static closure (it can't bind $this to a static).
@@ -111,6 +116,9 @@ final class Kernel
             // before the {primary}/{secondary} pair pattern.
             $api->get('/conjunctions/upcoming', ConjunctionListController::class);
             $api->get('/conjunctions/{primary:[0-9]+}/{secondary:[0-9]+}', ConjunctionDetailController::class);
+            // Space weather (Phase 4 chunk 3)
+            $api->get('/space-weather/now', SpaceWeatherNowController::class);
+            $api->get('/space-weather/24h', SpaceWeather24hController::class);
         })
             ->add(JsonResponseMiddleware::class)
             ->add(ETagMiddleware::class);

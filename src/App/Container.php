@@ -17,6 +17,7 @@ use SatTrackr\Cli\Commands\IngestCelesTrakCommand;
 use SatTrackr\Cli\Commands\IngestLaunchLibraryCommand;
 use SatTrackr\Cli\Commands\IngestSocratesCommand;
 use SatTrackr\Cli\Commands\IngestSpaceTrackCommand;
+use SatTrackr\Cli\Commands\IngestSwpcCommand;
 use SatTrackr\Cli\Commands\PruneCacheCommand;
 use SatTrackr\Cli\Commands\IngestSatCatCommand;
 use SatTrackr\Cli\Commands\MakeMigrationCommand;
@@ -42,6 +43,8 @@ use SatTrackr\Http\Controllers\ConjunctionListController;
 use SatTrackr\Http\Controllers\ReentryDetailController;
 use SatTrackr\Http\Controllers\ReentryListController;
 use SatTrackr\Http\Controllers\SatellitePassesController;
+use SatTrackr\Http\Controllers\SpaceWeather24hController;
+use SatTrackr\Http\Controllers\SpaceWeatherNowController;
 use SatTrackr\Http\Controllers\UpcomingLaunchesController;
 use SatTrackr\Http\Middleware\CorsMiddleware;
 use SatTrackr\Http\Middleware\ErrorHandlerMiddleware;
@@ -60,12 +63,15 @@ use SatTrackr\Ingest\SocratesClient;
 use SatTrackr\Ingest\SocratesCsvParser;
 use SatTrackr\Ingest\SocratesIngester;
 use SatTrackr\Ingest\SpaceTrackIngester;
+use SatTrackr\Ingest\SwpcClient;
+use SatTrackr\Ingest\SwpcIngester;
 use SatTrackr\Ingest\SatCatClient;
 use SatTrackr\Ingest\SatCatIngester;
 use SatTrackr\Ingest\TleParser;
 use SatTrackr\Http\Controllers\Text\TextCatalogController;
 use SatTrackr\Http\Controllers\Text\TextConjunctionListController;
 use SatTrackr\Http\Controllers\Text\TextDecaysController;
+use SatTrackr\Http\Controllers\Text\TextSpaceWeatherController;
 use SatTrackr\Http\Controllers\Text\TextGroupController;
 use SatTrackr\Http\Controllers\Text\TextGroupsController;
 use SatTrackr\Http\Controllers\Text\TextLaunchDetailController;
@@ -190,6 +196,10 @@ final class Container
             ConjunctionListController::class   => static fn (DIContainer $c) => new ConjunctionListController($c->get(Connection::class)),
             ConjunctionDetailController::class => static fn (DIContainer $c) => new ConjunctionDetailController($c->get(Connection::class)),
 
+            // Space weather endpoints (Phase 4 chunk 3)
+            SpaceWeatherNowController::class   => static fn (DIContainer $c) => new SpaceWeatherNowController($c->get(Connection::class)),
+            SpaceWeather24hController::class   => static fn (DIContainer $c) => new SpaceWeather24hController($c->get(Connection::class)),
+
             // Pass predictions (Phase 2 chunk 6)
             SatellitePassesController::class  => static fn (DIContainer $c) => new SatellitePassesController(
                 $c->get(Connection::class),
@@ -257,6 +267,14 @@ final class Container
                 logger: $c->get(LoggerInterface::class),
             ),
 
+            // SWPC space weather (Phase 4 chunk 3)
+            SwpcClient::class   => static fn (DIContainer $c) => new SwpcClient($c->get(GuzzleClient::class)),
+            SwpcIngester::class => static fn (DIContainer $c) => new SwpcIngester(
+                client: $c->get(SwpcClient::class),
+                db:     $c->get(Connection::class),
+                logger: $c->get(LoggerInterface::class),
+            ),
+
             // Pass prediction (Phase 2 chunk 6)
             PassCache::class      => static fn (DIContainer $c) => new PassCache($c->get(Connection::class)),
             PassCalculator::class => static fn (DIContainer $c) => new PassCalculator(
@@ -289,6 +307,10 @@ final class Container
             ),
             IngestSocratesCommand::class  => static fn (DIContainer $c) => new IngestSocratesCommand(
                 $c->get(SocratesIngester::class),
+                $c->get(Connection::class),
+            ),
+            IngestSwpcCommand::class      => static fn (DIContainer $c) => new IngestSwpcCommand(
+                $c->get(SwpcIngester::class),
                 $c->get(Connection::class),
             ),
             PruneCacheCommand::class      => static fn (DIContainer $c) => new PruneCacheCommand(
