@@ -56,7 +56,7 @@ Part of the **trackr.live family** alongside [trackr.live](https://trackr.live) 
 | 1. Conjunctions ingest + schema | ✅ done | New `conjunctions` table (migration 12) holds CelesTrak SOCRATES Plus close-approach predictions (TCA, miss distance, relative speed, max probability, dilution). `SocratesClient` fetches the canonical `sort-minRange.csv`; `SocratesCsvParser` (7 unit specs, fixture-driven) decodes the 11-column shape and normalizes TCAs to ISO-with-Z; `SocratesIngester` (5 feature specs) wraps fetch+parse in a single transaction with UPSERT on `(primary, secondary, TCA)` for re-run idempotency. `--max-tca-hours=N` window trims to the user-visible horizon (default 168h). `bin/console ingest:socrates` + `make ingest-socrates` wraps it. **Plan swerve, explicit:** `docs/phase4.md` §II row 2 said "HTML scrape" but the live site exposes a clean CSV — going with CSV, no info lost. Real run: **145,392 conjunctions ingested in 11.36s**. Top of the table is realistic — Starlink × Starlink @ 21m / p=0.45, Starlink × CZ-2C rocket body @ 23m / p=0.16. **161 PHP / 76 JS passing.** |
 | 2. Conjunctions API + text view | ⏳ pending | `/api/v1/conjunctions/{upcoming,{primary}/{secondary}}` + `/text/conjunctions` + topbar `§ conjunctions` |
 | 3. Space weather ingest + widget | ⏳ pending | NOAA SWPC ingester + `<sat-space-weather-pill>` + 24h trend popover |
-| 4. Aurora overlay | ⏳ pending | OVATION raster, ~250KB lazy, 5th `§ overlays` toggle |
+| 4. Aurora overlay | ✅ done | `OvationClient` fetches the NOAA SWPC 1°×1° aurora-probability grid (~65 K cells, refreshed every ~15 min). `AuroraRasterGenerator` (PHP GD) bakes it into a 720×360 equirectangular RGBA PNG with the standard auroral color ramp (faint green → orange → red-orange) and alpha-scaling, dropping <5% cells as noise. `bin/console ingest:ovation` + `make ingest-ovation` overwrite `public/textures/aurora-latest.png` + a sidecar `aurora-latest.json` with the observation/forecast timestamps. Real run: 11,488 painted cells in **4.7 KB** (way under the budgeted 250 KB — PNG compresses transparent regions to almost nothing). Client side: new `AuroraOverlayLayer` mirrors `LightPollutionLayer` (Cesium `SingleTileImageryProvider`, lazy on first toggle, `?v=now` cache-buster per toggle-on so refreshed rasters land cleanly); `OverlayService` gains an `aurora` key (default off); `§ overlays` menu grows `✦ Aurora forecast`. Bundle: 144.7 → 145.8 KB gzipped main. **180 PHP / 76 JS passing.** |
 | 5. Stats dashboard | ⏳ pending | `/stats` + `/api/v1/stats/{breakdown}` |
 | 6. Events feed + Atom + station tooltip | ⏳ pending | `/events`, `/events.atom`, click-station tooltip (Phase 3 chunk 4 fold-in) |
 | 7. N2YO magnitude enrichment | ⏳ pending | N2YOClient + quota guard + Mag column in §Visibility (Phase 2 chunk 6 fold-in) |
@@ -129,7 +129,7 @@ Self-contained — inline dark-theme CSS in the layout, no external assets, site
 
 Open `http://localhost:8000` (or the LAN URL printed by `make`). You should see:
 
-- **Top bar**: `⊕ sat.trackr.live` wordmark, `Space situational awareness, _legible_` tagline, `§ catalog · § launches · § decays · § conjunctions · § weather · § events` nav (launches/decays/conjunctions/weather link to text views; events placeholder for Phase 4 chunk 6), search input with `⌘K` shortcut hint, `📍 observer-location` pill (Phase 2 chunk 5), `☼ Kp` space-weather pill (Phase 4 chunk 3, opens popover with 24h trend), `§ overlays` menu (Phase 3 chunk 4), theme switcher button.
+- **Top bar**: `⊕ sat.trackr.live` wordmark, `Space situational awareness, _legible_` tagline, `§ catalog · § launches · § decays · § conjunctions · § weather · § events` nav (launches/decays/conjunctions/weather link to text views; events placeholder for Phase 4 chunk 6), search input with `⌘K` shortcut hint, `📍 observer-location` pill (Phase 2 chunk 5), `☼ Kp` space-weather pill (Phase 4 chunk 3, opens popover with 24h trend), `§ overlays` menu with five toggles — Orbit ribbon / 3D shapes / Ground stations / Light pollution / Aurora forecast (Phase 3 chunk 4 + Phase 4 chunk 4), theme switcher button.
 - **Cesium globe with ~15,000 satellites** rendered as point primitives, color-coded by `object_type` (cyan = payloads + unknown, amber = rocket bodies, red = debris, gray = TBA). SGP4 propagation runs in a Web Worker at 4Hz; you should see the ISS marching across the planet, Starlink trains in formation, and ~10K LEO objects in slow-motion swarm. Drag to rotate, pinch/scroll to zoom. OpenStreetMap imagery (no Cesium ion token needed yet).
 - **Click any dot** → it turns white + 9px and the right-rail **detail panel** slides in with four `§` sections:
   - **§ Identity** — type/status/orbit-class badges + 6-cell grid (operator, country, launch date, launch vehicle, mass, RCS). After Phase 2 chunk 1 (SATCAT), object_type/status/country/launch_date/launch_site_code/RCS now populated for ~98.5% of objects (operator + mass + dimensions remain empty until later sources). External links: N2YO, Heavens-Above, Gunter, Wikipedia.
@@ -163,6 +163,8 @@ make ingest-satcat-group GROUP=starlink  # just one SATCAT group
 make ingest-ll2                       # Launch Library 2 — 50 upcoming + 100 previous launches in ~4s (Phase 2 chunk 3)
 make ingest-spacetrack                # Space-Track TIP — predicted reentries in ~1.2s (Phase 2 chunk 4)
 make ingest-socrates                  # CelesTrak SOCRATES — ~145k close-approach predictions in ~12s (Phase 4 chunk 1)
+make ingest-swpc                      # NOAA SWPC snapshot of Kp + X-ray + R/S/G in <1s (Phase 4 chunk 3, */5min cron)
+make ingest-ovation                   # NOAA OVATION aurora-forecast raster in <1s (Phase 4 chunk 4, */15min cron)
 make pass-cache-prune                 # Sweep expired pass-cache rows (Phase 2 chunk 6)
 make build-skybox                     # Regenerate BSC5 starfield cubemap into public/textures/skybox/ (Phase 3 chunk 1)
 make health                           # PHP / pdo_sqlite / DB / per-table row counts
@@ -357,6 +359,7 @@ See [`docs/phase1.md` § X](docs/phase1.md) for the full deploy notes. TL;DR:
    0 */12 * * *  cd ~/sat.trackr.live && make ingest-spacetrack >> storage/logs/cron.log 2>&1
    0 */8 * * *   cd ~/sat.trackr.live && make ingest-socrates   >> storage/logs/cron.log 2>&1
    */5 * * * *   cd ~/sat.trackr.live && make ingest-swpc       >> storage/logs/cron.log 2>&1
+   */15 * * * *  cd ~/sat.trackr.live && make ingest-ovation    >> storage/logs/cron.log 2>&1
    30 4 * * *    cd ~/sat.trackr.live && make pass-cache-prune  >> storage/logs/cron.log 2>&1
    ```
 
