@@ -32,17 +32,24 @@ import { findMarqueeSpec, type MarqueeSpec, type ShapeKind } from './marqueeRegi
  */
 type AnyPrimitive = Cesium.Primitive | Cesium.Model;
 
+interface MarqueeSlot {
+  norad: number;
+  spec: MarqueeSpec;
+  primitive: AnyPrimitive;
+}
+
 export class MarqueeShapeLayer {
   private readonly primitives: Cesium.PrimitiveCollection;
-  private active: {
-    norad: number;
-    spec: MarqueeSpec;
-    primitive: AnyPrimitive;
-  } | null = null;
+  private active: MarqueeSlot | null = null;
+  /** Phase 6 chunk 2 — secondary slot for the conjunction-replay scene's
+   *  second satellite.  Independent loadToken so async glTF loads don't
+   *  cross-contaminate the primary slot. */
+  private activeSecondary: MarqueeSlot | null = null;
   /** Token incremented on every show() so async glTF loads from previous
    * selections lose to the current selection in case the user re-clicks
    * mid-load. */
   private loadToken = 0;
+  private loadTokenSecondary = 0;
 
   constructor(private readonly scene: Cesium.Scene) {
     this.primitives = scene.primitives.add(new Cesium.PrimitiveCollection());
@@ -121,6 +128,68 @@ export class MarqueeShapeLayer {
     if (this.active === null) return;
     this.primitives.remove(this.active.primitive);
     this.active = null;
+  }
+
+  /**
+   * Phase 6 chunk 2 — show a marquee for a SECOND satellite alongside
+   * the active primary slot.  Used by the conjunction-replay scene so
+   * both satellites in the encounter get their proper shape (real
+   * glTF if registered, procedural box/cylinder otherwise).
+   */
+  showSecondary(norad: number, name: string | null, position: Cesium.Cartesian3): void {
+    const spec = findMarqueeSpec(norad, name);
+    if (spec === null) { this.hideSecondary(); return; }
+    if (!this.cameraIsCloseEnough(position)) { this.hideSecondary(); return; }
+    if (this.activeSecondary?.norad === norad) {
+      this.activeSecondary.primitive.modelMatrix = matrixForPosition(position);
+      return;
+    }
+    this.hideSecondary();
+
+    if (spec.gltfUri) {
+      const myToken = ++this.loadTokenSecondary;
+      const modelMatrix = matrixForPosition(position);
+      const scale = spec.visualScale;
+      void Cesium.Model.fromGltfAsync({ url: spec.gltfUri, modelMatrix, scale })
+        .then((model: Cesium.Model) => {
+          if (myToken !== this.loadTokenSecondary || this.scene.isDestroyed()) return;
+          this.primitives.add(model);
+          this.activeSecondary = { norad, spec, primitive: model };
+        })
+        .catch((err: unknown) => {
+          // eslint-disable-next-line no-console
+          console.warn(`[MarqueeShapeLayer] secondary glTF load failed for ${spec.label}, falling back`, err);
+          if (myToken !== this.loadTokenSecondary) return;
+          const primitive = this.buildProceduralPrimitive(spec, position);
+          this.primitives.add(primitive);
+          this.activeSecondary = { norad, spec, primitive };
+        });
+      return;
+    }
+    const primitive = this.buildProceduralPrimitive(spec, position);
+    this.primitives.add(primitive);
+    this.activeSecondary = { norad, spec, primitive };
+  }
+
+  hideSecondary(): void {
+    if (this.activeSecondary === null) return;
+    this.primitives.remove(this.activeSecondary.primitive);
+    this.activeSecondary = null;
+  }
+
+  /**
+   * Like {@link update} but for the secondary slot.  The
+   * conjunction-replay scene calls this on each clock tick with the
+   * second satellite's freshly-propagated ECEF position.
+   */
+  updateSecondary(norad: number | null, name: string | null, position: Cesium.Cartesian3 | null): void {
+    if (norad === null || position === null) { this.hideSecondary(); return; }
+    if (this.activeSecondary !== null && this.activeSecondary.norad === norad) {
+      if (!this.cameraIsCloseEnough(position)) { this.hideSecondary(); return; }
+      this.activeSecondary.primitive.modelMatrix = matrixForPosition(position);
+      return;
+    }
+    this.showSecondary(norad, name, position);
   }
 
   /**

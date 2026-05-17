@@ -157,6 +157,41 @@ export class PointPrimitiveLayer {
     p.pixelSize = PIXEL_SIZES[type] ?? PIXEL_SIZES.UNKNOWN;
   }
 
+  /**
+   * Phase 6 chunk 2 — multiply every dot's color alpha by `alpha` so
+   * the catalog can be dimmed (or blanked) while the conjunction-replay
+   * scene focuses on its two satellites.  Pass 1 to restore full
+   * opacity (re-applies each NORAD's default style by type).
+   *
+   * Cheap — touches `count` PointPrimitives once.  Idempotent: passing
+   * the same alpha repeatedly is fine.  Doesn't touch the highlighted
+   * satellite (chunk-2 replay-mode handles that separately).
+   */
+  setOverallAlpha(alpha: number): void {
+    const clamped = Math.max(0, Math.min(1, alpha));
+    if (clamped === 1) {
+      // Restore everyone to their type-default color.
+      for (const [norad] of this.indexByNorad) {
+        this.applyDefaultStyle(norad);
+      }
+      if (this.highlighted !== null) {
+        // Re-apply the highlight on top so it survives the restore loop.
+        const idx = this.indexByNorad.get(this.highlighted);
+        if (idx !== undefined) {
+          const p = this.collection.get(idx);
+          p.color = HIGHLIGHT_COLOR;
+          p.pixelSize = HIGHLIGHT_PIXEL_SIZE;
+        }
+      }
+      return;
+    }
+    for (const [norad, idx] of this.indexByNorad) {
+      const type = (this.typeByNorad.get(norad) ?? 'UNKNOWN') as keyof typeof COLORS;
+      const base = COLORS[type] ?? COLORS.UNKNOWN;
+      this.collection.get(idx).color = base.withAlpha(base.alpha * clamped);
+    }
+  }
+
   startPropagation(): void {
     if (this.unsubscribeTick !== null) return;
     // Kick once immediately so the user doesn't wait a full interval to see motion.

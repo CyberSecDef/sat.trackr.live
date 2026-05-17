@@ -36,6 +36,10 @@ export class ConjunctionScene {
   private satrecA: Satrec | null = null;
   private satrecB: Satrec | null = null;
   private restored: { startTime: Cesium.JulianDate; stopTime: Cesium.JulianDate; range: Cesium.ClockRange } | null = null;
+  /** TCA-moment pulse — accent-cyan circle near the midpoint while the
+   *  clock is within ±500 ms of TCA.  Created lazily on first hit. */
+  private tcaPulseEntity: Cesium.Entity | null = null;
+  private tcaPulseAddedToViewer = false;
 
   constructor(
     private readonly globe: Globe,
@@ -57,8 +61,28 @@ export class ConjunctionScene {
     if (tleB !== null) this.satrecB = twoline2satrec(tleB.data.line1, tleB.data.line2);
 
     this.configureClock();
+
+    // Phase 6 chunk 2 — dim the catalog so the two replay sats are the
+    // only thing on screen.  Alpha 0 hides them entirely; the marquee
+    // shapes below render the actual replay subjects.
+    this.globe.layer?.setOverallAlpha(0);
+
+    // Both-sat ribbons (chunk 2 widened OrbitRibbonLayer with a secondary slot).
+    const tNow = this.globe.clock?.getTimeMs() ?? Date.now();
+    if (this.satrecA !== null) this.globe.ribbons?.show(this.satrecA, tNow);
+    if (this.satrecB !== null) this.globe.ribbons?.showSecondary(this.satrecB, tNow);
+
+    // Both-sat marquee shapes — initial positions seeded from TLE
+    // propagation; subsequent ticks re-call updateMarquees.
+    this.updateMarquees();
+
     this.frameCameraOnPair();
-    this.tickUnsub = this.subscribeToTicks(() => this.frameCameraOnPair());
+    this.tickUnsub = this.subscribeToTicks(() => {
+      this.frameCameraOnPair();
+      this.updateMarquees();
+      this.globe.ribbons?.update(this.globe.clock?.getTimeMs() ?? Date.now());
+      this.updateTcaPulse();
+    });
   }
 
   dispose(): void {
@@ -66,7 +90,98 @@ export class ConjunctionScene {
     this.active = false;
     this.tickUnsub?.();
     this.tickUnsub = null;
+    this.globe.layer?.setOverallAlpha(1);
+    this.globe.ribbons?.hide();
+    this.globe.marquee?.hide();
+    this.globe.marquee?.hideSecondary();
+    if (this.tcaPulseAddedToViewer && this.tcaPulseEntity !== null && this.globe.viewer !== undefined) {
+      this.globe.viewer.entities.remove(this.tcaPulseEntity);
+    }
+    this.tcaPulseEntity = null;
+    this.tcaPulseAddedToViewer = false;
     this.restoreClock();
+  }
+
+  /** Re-position both marquee shapes for the current clock tick. */
+  private updateMarquees(): void {
+    const a = this.getEcefAtNow(this.satrecA);
+    const b = this.getEcefAtNow(this.satrecB);
+    if (a !== null) this.globe.marquee?.update(this.ctx.primary,   this.ctx.primaryName,   a);
+    if (b !== null) this.globe.marquee?.updateSecondary(this.ctx.secondary, this.ctx.secondaryName, b);
+  }
+
+  /**
+   * Phase 6 chunk 2 — live ECEF position of the primary satellite (m).
+   * The HUD reads this every tick to compute live miss distance.
+   * Returns null until TLEs have loaded and the first propagation succeeds.
+   */
+  livePrimaryEcefMeters(): [number, number, number] | null {
+    return this.toTuple(this.getEcefAtNow(this.satrecA));
+  }
+
+  /** Live ECEF position of the secondary satellite (m). See {@link livePrimaryEcefMeters}. */
+  liveSecondaryEcefMeters(): [number, number, number] | null {
+    return this.toTuple(this.getEcefAtNow(this.satrecB));
+  }
+
+  private toTuple(c: Cesium.Cartesian3 | null): [number, number, number] | null {
+    return c === null ? null : [c.x, c.y, c.z];
+  }
+
+  /**
+   * Draws a brief accent-cyan ring at the midpoint between the two
+   * satellites when the clock is within ±500 ms of TCA. The ring
+   * fades in over the first quarter of the window and out over the
+   * last, giving the marquee moment a clear visual punctuation
+   * regardless of scrub direction.
+   */
+  private updateTcaPulse(): void {
+    const viewer = this.globe.viewer;
+    const clock  = this.globe.clock;
+    if (viewer === undefined || clock === undefined) return;
+
+    const offsetMs = clock.getTimeMs() - Date.parse(this.ctx.tca);
+    const halfWindowMs = 500;
+    const inside = Math.abs(offsetMs) <= halfWindowMs;
+
+    if (!inside) {
+      if (this.tcaPulseAddedToViewer && this.tcaPulseEntity !== null) {
+        viewer.entities.remove(this.tcaPulseEntity);
+        this.tcaPulseAddedToViewer = false;
+      }
+      return;
+    }
+
+    const a = this.getEcefAtNow(this.satrecA);
+    const b = this.getEcefAtNow(this.satrecB);
+    if (a === null || b === null) return;
+    const midpoint = Cesium.Cartesian3.midpoint(a, b, new Cesium.Cartesian3());
+    // Triangle-wave alpha: 0 at the edges, 1 at TCA.
+    const norm = 1 - Math.abs(offsetMs) / halfWindowMs;
+    const alpha = 0.2 + 0.7 * norm;
+    const color = Cesium.Color.fromCssColorString('#00d9ff').withAlpha(alpha);
+
+    if (this.tcaPulseEntity === null) {
+      this.tcaPulseEntity = new Cesium.Entity({
+        position: midpoint,
+        point: {
+          pixelSize: 18,
+          color,
+          outlineColor: color,
+          outlineWidth: 2,
+        },
+      });
+    } else {
+      this.tcaPulseEntity.position = new Cesium.ConstantPositionProperty(midpoint);
+      if (this.tcaPulseEntity.point !== undefined) {
+        this.tcaPulseEntity.point.color = new Cesium.ConstantProperty(color);
+        this.tcaPulseEntity.point.outlineColor = new Cesium.ConstantProperty(color);
+      }
+    }
+    if (!this.tcaPulseAddedToViewer) {
+      viewer.entities.add(this.tcaPulseEntity);
+      this.tcaPulseAddedToViewer = true;
+    }
   }
 
   private configureClock(): void {
