@@ -49,4 +49,24 @@ test.describe('Conjunction-replay route', () => {
     const attr = await page.locator('sat-app').getAttribute('replay-mode');
     expect(attr).toBeNull();
   });
+
+  test('replay HUD renders with both names + ▶ Play button (chunk 2B)', async ({ page, request }) => {
+    const api = await request.get('/api/v1/conjunctions/upcoming?limit=1');
+    const row = (await api.json()).data[0];
+    test.skip(row === undefined, 'No upcoming conjunctions in the DB');
+    const primary   = row.primary?.norad_id   ?? row.primary;
+    const secondary = row.secondary?.norad_id ?? row.secondary;
+
+    await page.goto(`/conjunction/${primary}/${secondary}`);
+    // HUD lives in the SPA shadow tree; Playwright auto-pierces shadow
+    // boundaries on locator paths.
+    const hud = page.locator('sat-app sat-conjunction-hud');
+    await expect(hud).toBeAttached({ timeout: 10_000 });
+    // Play button is the default state — the SPA enters paused at T-2min.
+    const playBtn = hud.locator('button.play');
+    await expect(playBtn).toContainText(/Play/);
+    // Miss + TCA stat labels are always present.
+    await expect(hud).toContainText('Miss');
+    await expect(hud).toContainText('TCA');
+  });
 });
