@@ -118,6 +118,22 @@ final class EventsAggregatorTest extends TestCase
         $this->assertCount(2, $conjunctions);
     }
 
+    public function testConjunctionLinkPointsAtReplayRoute(): void
+    {
+        // Phase 6 chunk 3 — Atom + /text/events entries link to the SPA
+        // replay scene, not the JSON API. URL shape is /conjunction/{p}/{s}.
+        $events = (new EventsAggregator($this->db))->recent(7, 35);
+        $conjunctions = array_values(array_filter($events, static fn ($e) => $e['kind'] === 'conjunction'));
+        $this->assertNotEmpty($conjunctions);
+        foreach ($conjunctions as $e) {
+            $this->assertMatchesRegularExpression(
+                '#^/conjunction/\d+/\d+$#',
+                (string) $e['link'],
+                "conjunction event link should be /conjunction/{p}/{s}, got {$e['link']}",
+            );
+        }
+    }
+
     public function testEventIdsArePrefixedByKind(): void
     {
         $events = (new EventsAggregator($this->db))->recent(7, 7);

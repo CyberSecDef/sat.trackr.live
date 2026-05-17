@@ -166,7 +166,11 @@ final class EventsAggregator
                     (float) $r->tca_range_km,
                     (float) $r->max_probability,
                 ),
-                'link'      => "/api/v1/conjunctions/{$r->norad_id_primary}/{$r->norad_id_secondary}",
+                // Phase 6 chunk 3 — Atom + /text/events entries link at the
+                // SPA replay route, not the JSON API. Feed readers + crawlers
+                // get a human-meaningful destination; the SOCRATES row id is
+                // still preserved in the entry's URN above for stable dedup.
+                'link'      => "/conjunction/{$r->norad_id_primary}/{$r->norad_id_secondary}",
             ];
         }
         return $out;
