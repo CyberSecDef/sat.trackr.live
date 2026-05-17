@@ -146,6 +146,10 @@ ingest-swpc: ## Snapshot NOAA SWPC space-weather indicators (Phase 4 chunk 3)
 ingest-satnogs: ## Refresh amateur-radio transmitter catalog from SatNOGS DB (Phase 5 chunk 1)
 	php bin/console ingest:satnogs
 
+.PHONY: openapi-dump
+openapi-dump: ## Regenerate public/openapi.json from controller attributes (Phase 5 chunk 3)
+	php bin/console openapi:dump
+
 .PHONY: ingest-ovation
 ingest-ovation: ## Refresh the NOAA OVATION aurora-forecast raster (Phase 4 chunk 4)
 	php bin/console ingest:ovation

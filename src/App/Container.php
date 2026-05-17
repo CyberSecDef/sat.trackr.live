@@ -25,10 +25,13 @@ use SatTrackr\Cli\Commands\IngestSatCatCommand;
 use SatTrackr\Cli\Commands\MakeMigrationCommand;
 use SatTrackr\Cli\Commands\MigrateCommand;
 use SatTrackr\Cli\Commands\MigrateStatusCommand;
+use SatTrackr\Cli\Commands\OpenApiDumpCommand;
 use SatTrackr\Cli\Commands\RollbackCommand;
 use SatTrackr\Database\Connection;
 use SatTrackr\Database\Migrator;
 use SatTrackr\Http\Controllers\AutocompleteController;
+use SatTrackr\Http\Controllers\OpenApiController;
+use SatTrackr\Http\Controllers\SwaggerUiController;
 use SatTrackr\Http\Controllers\GroupDetailController;
 use SatTrackr\Http\Controllers\GroupListController;
 use SatTrackr\Http\Controllers\GroupTlesController;
@@ -94,6 +97,7 @@ use SatTrackr\Http\Controllers\Text\TextLaunchListController;
 use SatTrackr\Http\Controllers\Text\TextSatelliteController;
 use SatTrackr\Http\Controllers\Text\TextSearchController;
 use SatTrackr\Services\HttpClientFactory;
+use SatTrackr\Services\OpenApiGenerator;
 use SatTrackr\Services\TextRenderer;
 use SatTrackr\Services\ViteAssetResolver;
 
@@ -157,6 +161,10 @@ final class Container
             JsonResponseMiddleware::class => static fn () => new JsonResponseMiddleware(),
 
             FreshnessClassifier::class => static fn () => new FreshnessClassifier(),
+            // OpenAPI 3.1 generator + controllers (Phase 5 chunk 3)
+            OpenApiGenerator::class    => static fn () => new OpenApiGenerator($rootDir),
+            OpenApiController::class   => static fn (DIContainer $c) => new OpenApiController($c->get(OpenApiGenerator::class)),
+            SwaggerUiController::class => static fn () => new SwaggerUiController(),
             TextRenderer::class        => static fn () => new TextRenderer($rootDir),
 
             // Events feed (Phase 4 chunk 6)
@@ -387,6 +395,10 @@ final class Container
             HealthCommand::class          => static fn (DIContainer $c) => new HealthCommand(
                 $c->get(Connection::class),
                 $c->get(Migrator::class),
+            ),
+            OpenApiDumpCommand::class     => static fn (DIContainer $c) => new OpenApiDumpCommand(
+                $c->get(OpenApiGenerator::class),
+                $rootDir,
             ),
         ]);
 

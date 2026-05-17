@@ -12,7 +12,9 @@ use SatTrackr\Http\Controllers\LaunchDetailController;
 use SatTrackr\Http\Controllers\LaunchSiteListController;
 use SatTrackr\Http\Controllers\RecentLaunchesController;
 use SatTrackr\Http\Controllers\SatelliteDetailController;
+use SatTrackr\Http\Controllers\OpenApiController;
 use SatTrackr\Http\Controllers\SatelliteListController;
+use SatTrackr\Http\Controllers\SwaggerUiController;
 use SatTrackr\Http\Controllers\SatelliteRadioController;
 use SatTrackr\Http\Controllers\SatelliteTleController;
 use SatTrackr\Http\Controllers\SearchController;
@@ -133,9 +135,15 @@ final class Kernel
             $api->get('/space-weather/24h', SpaceWeather24hController::class);
             // Stats dashboard (Phase 4 chunk 5)
             $api->get('/stats/{breakdown:[a-z-]+}', StatsController::class);
+            // OpenAPI 3.1 spec (Phase 5 chunk 3) — kept inside the group so it
+            // picks up JSON+ETag middleware automatically.
+            $api->get('/openapi.json', OpenApiController::class);
         })
             ->add(JsonResponseMiddleware::class)
             ->add(ETagMiddleware::class);
+
+        // Swagger UI lives outside the JSON middleware group — it's an HTML page.
+        $app->get('/api/v1/docs', SwaggerUiController::class);
         // CORS lives at the app level (above) — see comment in createApp().
     }
 }

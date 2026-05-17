@@ -1,0 +1,1895 @@
+{
+    "openapi": "3.1.0",
+    "info": {
+        "title": "sat.trackr.live API",
+        "description": "Public read-only HTTP API behind sat.trackr.live.\n\n- **Catalog & TLEs** \u2014 every tracked satellite, rocket body, and debris\n  object in Earth orbit (CelesTrak GP + SATCAT).\n- **Launches** \u2014 upcoming + recent missions (Launch Library 2).\n- **Reentries** \u2014 predicted decays (Space-Track TIP).\n- **Conjunctions** \u2014 close-approach predictions (SOCRATES, refreshed 8h).\n- **Space weather** \u2014 Kp / X-ray flux / R-S-G storm scales (NOAA SWPC).\n- **Pass predictions** \u2014 observer-local satellite passes (SGP4 + N2YO\n  visual-magnitude enrichment when within quota).\n- **Stats** \u2014 operator / country / type / launch-year breakdowns.\n\nNo authentication required. Rate limits are advisory; cache-friendly\nheaders (`ETag`, `Cache-Control`) are emitted on every endpoint.",
+        "contact": {
+            "name": "sat.trackr.live",
+            "url": "https://sat.trackr.live"
+        },
+        "license": {
+            "name": "AGPL-3.0-or-later",
+            "identifier": "AGPL-3.0-or-later"
+        },
+        "version": "1.0.0"
+    },
+    "servers": [
+        {
+            "url": "https://sat.trackr.live",
+            "description": "Production"
+        },
+        {
+            "url": "http://localhost:8000",
+            "description": "Local dev (make dev)"
+        }
+    ],
+    "paths": {
+        "/api/v1/autocomplete": {
+            "get": {
+                "tags": [
+                    "Search"
+                ],
+                "summary": "Low-latency typeahead (up to 10 results)",
+                "operationId": "2994748025de1f5330975490fef1dc57",
+                "parameters": [
+                    {
+                        "name": "q",
+                        "in": "query",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Up to 10 autocomplete suggestions",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "properties": {
+                                                    "norad_id": {
+                                                        "type": "integer"
+                                                    },
+                                                    "name": {
+                                                        "type": "string"
+                                                    }
+                                                },
+                                                "type": "object"
+                                            }
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/conjunctions/{primary}/{secondary}": {
+            "get": {
+                "tags": [
+                    "Conjunctions"
+                ],
+                "summary": "All active close-approach predictions for a NORAD pair",
+                "description": "Order-insensitive: /123/456 and /456/123 return the same rows.",
+                "operationId": "983faecdcf74d924c15130fe4d67d296",
+                "parameters": [
+                    {
+                        "name": "primary",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    },
+                    {
+                        "name": "secondary",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Conjunctions for this pair",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/components/schemas/Conjunction"
+                                            }
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "No conjunctions found for the pair",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/conjunctions/upcoming": {
+            "get": {
+                "tags": [
+                    "Conjunctions"
+                ],
+                "summary": "Upcoming SOCRATES close-approach predictions",
+                "operationId": "2f64e4238ac0e85fc20307c145b8652b",
+                "parameters": [
+                    {
+                        "name": "within_hours",
+                        "in": "query",
+                        "schema": {
+                            "type": "integer",
+                            "default": 24,
+                            "maximum": 720
+                        }
+                    },
+                    {
+                        "name": "min_probability",
+                        "in": "query",
+                        "schema": {
+                            "type": "number",
+                            "default": 0
+                        }
+                    },
+                    {
+                        "name": "limit",
+                        "in": "query",
+                        "schema": {
+                            "type": "integer",
+                            "default": 50,
+                            "maximum": 500
+                        }
+                    },
+                    {
+                        "name": "page",
+                        "in": "query",
+                        "schema": {
+                            "type": "integer",
+                            "default": 1
+                        }
+                    },
+                    {
+                        "name": "sort",
+                        "in": "query",
+                        "schema": {
+                            "type": "string",
+                            "default": "probability",
+                            "enum": [
+                                "probability",
+                                "tca",
+                                "range"
+                            ]
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Conjunctions",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/components/schemas/Conjunction"
+                                            }
+                                        },
+                                        "meta": {
+                                            "$ref": "#/components/schemas/PaginationMeta"
+                                        },
+                                        "links": {
+                                            "$ref": "#/components/schemas/PaginationLinks"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/groups/{slug}": {
+            "get": {
+                "tags": [
+                    "Groups"
+                ],
+                "summary": "Group metadata + member NORADs",
+                "operationId": "24622d20f9f96b09c467c61f3fe82b7b",
+                "parameters": [
+                    {
+                        "name": "slug",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Group + members",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "data": {
+                                            "properties": {
+                                                "slug": {
+                                                    "type": "string"
+                                                },
+                                                "name": {
+                                                    "type": "string"
+                                                },
+                                                "count": {
+                                                    "type": "integer"
+                                                },
+                                                "norad_ids": {
+                                                    "type": "array",
+                                                    "items": {
+                                                        "type": "integer"
+                                                    }
+                                                }
+                                            },
+                                            "type": "object"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Unknown group slug",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/groups": {
+            "get": {
+                "tags": [
+                    "Groups"
+                ],
+                "summary": "CelesTrak constellation groups with current member counts",
+                "operationId": "e663e2e1aaac5d7991739ed94a7aa327",
+                "responses": {
+                    "200": {
+                        "description": "All configured groups",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/components/schemas/GroupSummary"
+                                            }
+                                        },
+                                        "meta": {
+                                            "properties": {
+                                                "total_groups": {
+                                                    "type": "integer"
+                                                },
+                                                "source": {
+                                                    "type": "string"
+                                                }
+                                            },
+                                            "type": "object"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/groups/{slug}/tles": {
+            "get": {
+                "tags": [
+                    "Groups"
+                ],
+                "summary": "Bulk TLE bundle for every active satellite in a group",
+                "description": "Hot SPA endpoint. Returns one large gzip-friendly JSON of all current TLEs for the group; designed for client-side bulk propagation. Decayed objects are filtered out.",
+                "operationId": "213803b4522730cda46aec28cfee8f46",
+                "parameters": [
+                    {
+                        "name": "slug",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "TLE bundle",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "properties": {
+                                                    "norad_id": {
+                                                        "type": "integer"
+                                                    },
+                                                    "name": {
+                                                        "type": "string"
+                                                    },
+                                                    "line1": {
+                                                        "type": "string"
+                                                    },
+                                                    "line2": {
+                                                        "type": "string"
+                                                    },
+                                                    "object_type": {
+                                                        "type": "string"
+                                                    }
+                                                },
+                                                "type": "object"
+                                            }
+                                        },
+                                        "meta": {
+                                            "type": "object"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Unknown group slug",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/launches/{id}": {
+            "get": {
+                "tags": [
+                    "Launches"
+                ],
+                "summary": "Full launch detail with pad metadata + associated NORADs",
+                "operationId": "f372112f6fd48b553f64a1e93ef2235b",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Launch detail",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/components/schemas/Launch"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Unknown launch id",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/launch-sites": {
+            "get": {
+                "tags": [
+                    "Launches"
+                ],
+                "summary": "All launch pads currently in the catalog",
+                "operationId": "fb837408f13ad505c3264d217e1fbdb7",
+                "responses": {
+                    "200": {
+                        "description": "Launch pads with coordinates",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "properties": {
+                                                    "code": {
+                                                        "type": "string"
+                                                    },
+                                                    "name": {
+                                                        "type": "string"
+                                                    },
+                                                    "latitude": {
+                                                        "type": [
+                                                            "number",
+                                                            "null"
+                                                        ]
+                                                    },
+                                                    "longitude": {
+                                                        "type": [
+                                                            "number",
+                                                            "null"
+                                                        ]
+                                                    },
+                                                    "country": {
+                                                        "type": [
+                                                            "string",
+                                                            "null"
+                                                        ]
+                                                    }
+                                                },
+                                                "type": "object"
+                                            }
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/launches/recent": {
+            "get": {
+                "tags": [
+                    "Launches"
+                ],
+                "summary": "Recent launches (NET in the past, ordered descending)",
+                "operationId": "51371823473f7d1c8a4cff3d71a41fb9",
+                "parameters": [
+                    {
+                        "name": "limit",
+                        "in": "query",
+                        "schema": {
+                            "type": "integer",
+                            "default": 100,
+                            "maximum": 500
+                        }
+                    },
+                    {
+                        "name": "days",
+                        "in": "query",
+                        "schema": {
+                            "type": "integer",
+                            "default": 90
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Recent launches",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/components/schemas/Launch"
+                                            }
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/reentries/{norad}": {
+            "get": {
+                "tags": [
+                    "Reentries"
+                ],
+                "summary": "Reentry prediction for a single NORAD",
+                "operationId": "e03a9ea54e8ec4cefb3d57dcb6df4aa0",
+                "parameters": [
+                    {
+                        "name": "norad",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Reentry detail (freshest source)",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "data": {
+                                            "type": "object"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "No active prediction",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/reentries/upcoming": {
+            "get": {
+                "tags": [
+                    "Reentries"
+                ],
+                "summary": "Predicted reentries from Space-Track TIP",
+                "operationId": "8660b515c4ddeba724df438e614c858b",
+                "parameters": [
+                    {
+                        "name": "within_hours",
+                        "in": "query",
+                        "schema": {
+                            "type": "integer",
+                            "default": 168,
+                            "maximum": 720
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Reentries ordered by predicted_decay ASC",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "properties": {
+                                                    "norad_id": {
+                                                        "type": "integer"
+                                                    },
+                                                    "name": {
+                                                        "type": "string"
+                                                    },
+                                                    "predicted_decay": {
+                                                        "type": "string",
+                                                        "format": "date-time"
+                                                    },
+                                                    "window_seconds": {
+                                                        "type": [
+                                                            "integer",
+                                                            "null"
+                                                        ]
+                                                    },
+                                                    "updated_at": {
+                                                        "type": "string",
+                                                        "format": "date-time"
+                                                    }
+                                                },
+                                                "type": "object"
+                                            }
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/satellites/{norad}": {
+            "get": {
+                "tags": [
+                    "Catalog"
+                ],
+                "summary": "Full satellite metadata + inlined current TLE",
+                "operationId": "2de165fc71085becf0f763fb3deaf48d",
+                "parameters": [
+                    {
+                        "name": "norad",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Satellite detail",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/components/schemas/SatelliteDetail"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Unknown NORAD",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/satellites": {
+            "get": {
+                "tags": [
+                    "Catalog"
+                ],
+                "summary": "List satellites (paginated, filterable, FTS-searchable)",
+                "operationId": "fdfca761cf77fb3f4c84ad8ac1f92d9b",
+                "parameters": [
+                    {
+                        "name": "country",
+                        "in": "query",
+                        "description": "Comma-separated ISO country codes",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "operator",
+                        "in": "query",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "type",
+                        "in": "query",
+                        "description": "PAYLOAD / ROCKET_BODY / DEBRIS / UNKNOWN (comma-separated)",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "status",
+                        "in": "query",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "orbit_class",
+                        "in": "query",
+                        "description": "LEO / MEO / GEO / HEO (comma-separated)",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "launched_after",
+                        "in": "query",
+                        "schema": {
+                            "type": "string",
+                            "format": "date"
+                        }
+                    },
+                    {
+                        "name": "launched_before",
+                        "in": "query",
+                        "schema": {
+                            "type": "string",
+                            "format": "date"
+                        }
+                    },
+                    {
+                        "name": "q",
+                        "in": "query",
+                        "description": "FTS5 fuzzy match over name / intl_designator / operator",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "page",
+                        "in": "query",
+                        "schema": {
+                            "type": "integer",
+                            "default": 1
+                        }
+                    },
+                    {
+                        "name": "limit",
+                        "in": "query",
+                        "schema": {
+                            "type": "integer",
+                            "default": 100,
+                            "maximum": 500
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Page of matching satellites",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/components/schemas/SatelliteSummary"
+                                            }
+                                        },
+                                        "meta": {
+                                            "$ref": "#/components/schemas/PaginationMeta"
+                                        },
+                                        "links": {
+                                            "$ref": "#/components/schemas/PaginationLinks"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/satellites/{norad}/passes": {
+            "get": {
+                "tags": [
+                    "Catalog"
+                ],
+                "summary": "Observer-local pass predictions (SGP4 + optional N2YO magnitude)",
+                "operationId": "3ace1dcbb3c6cb2b3c4db4e83811e573",
+                "parameters": [
+                    {
+                        "name": "norad",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    },
+                    {
+                        "name": "lat",
+                        "in": "query",
+                        "description": "Observer latitude in degrees",
+                        "required": true,
+                        "schema": {
+                            "type": "number"
+                        }
+                    },
+                    {
+                        "name": "lon",
+                        "in": "query",
+                        "description": "Observer longitude in degrees",
+                        "required": true,
+                        "schema": {
+                            "type": "number"
+                        }
+                    },
+                    {
+                        "name": "alt",
+                        "in": "query",
+                        "description": "Observer altitude in meters",
+                        "schema": {
+                            "type": "number",
+                            "default": 0
+                        }
+                    },
+                    {
+                        "name": "days",
+                        "in": "query",
+                        "schema": {
+                            "type": "integer",
+                            "default": 7,
+                            "maximum": 14
+                        }
+                    },
+                    {
+                        "name": "min_elevation_deg",
+                        "in": "query",
+                        "schema": {
+                            "type": "number",
+                            "default": 10
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Up to N upcoming passes, cached for ~6h per observer-day",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/components/schemas/Pass"
+                                            }
+                                        },
+                                        "meta": {
+                                            "properties": {
+                                                "norad_id": {
+                                                    "type": "integer"
+                                                },
+                                                "from_cache": {
+                                                    "type": "boolean"
+                                                },
+                                                "observer": {
+                                                    "type": "object"
+                                                }
+                                            },
+                                            "type": "object"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Missing/invalid observer params",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Unknown NORAD",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/satellites/{norad}/radio": {
+            "get": {
+                "tags": [
+                    "Radio"
+                ],
+                "summary": "Amateur-radio transmitters from SatNOGS DB",
+                "operationId": "f34bed4b22c5c53ff178d561f4551dc9",
+                "parameters": [
+                    {
+                        "name": "norad",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Transmitter rows (alive-first, then by description). May be empty.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/components/schemas/RadioTransmitter"
+                                            }
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Unknown satellite",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/satellites/{norad}/tle": {
+            "get": {
+                "tags": [
+                    "Catalog"
+                ],
+                "summary": "Current TLE only (skip the metadata round-trip)",
+                "operationId": "7301db495d3bcf379b658d6b9952ccd5",
+                "parameters": [
+                    {
+                        "name": "norad",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "TLE current",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/components/schemas/TleCurrent"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Unknown NORAD or no TLE on file",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/search": {
+            "get": {
+                "tags": [
+                    "Search"
+                ],
+                "summary": "Universal search (NORAD / intl-designator / FTS5 name fuzzy)",
+                "operationId": "6cbbfb610d12e68d018d4e7c226319d0",
+                "parameters": [
+                    {
+                        "name": "q",
+                        "in": "query",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Up to 50 results ranked by match strength",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "properties": {
+                                                    "norad_id": {
+                                                        "type": "integer"
+                                                    },
+                                                    "name": {
+                                                        "type": "string"
+                                                    },
+                                                    "match_type": {
+                                                        "type": "string",
+                                                        "enum": [
+                                                            "norad",
+                                                            "intl_designator",
+                                                            "fts"
+                                                        ]
+                                                    }
+                                                },
+                                                "type": "object"
+                                            }
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/space-weather/24h": {
+            "get": {
+                "tags": [
+                    "Space weather"
+                ],
+                "summary": "Trailing 24 h of SWPC samples (ascending) \u2014 feeds the trend chart",
+                "operationId": "c45dbc7bb8632c8ec2563404da5ef356",
+                "responses": {
+                    "200": {
+                        "description": "Series of samples",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "properties": {
+                                                    "sampled_at": {
+                                                        "type": "string",
+                                                        "format": "date-time"
+                                                    },
+                                                    "kp": {
+                                                        "type": [
+                                                            "number",
+                                                            "null"
+                                                        ]
+                                                    },
+                                                    "xray_class": {
+                                                        "type": [
+                                                            "string",
+                                                            "null"
+                                                        ]
+                                                    }
+                                                },
+                                                "type": "object"
+                                            }
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/space-weather/now": {
+            "get": {
+                "tags": [
+                    "Space weather"
+                ],
+                "summary": "Most recent NOAA SWPC space-weather sample",
+                "operationId": "b7f7e22bf6a241f9ff4a79e3c7d97823",
+                "responses": {
+                    "200": {
+                        "description": "Latest sample",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "data": {
+                                            "properties": {
+                                                "sampled_at": {
+                                                    "type": "string",
+                                                    "format": "date-time"
+                                                },
+                                                "kp": {
+                                                    "type": [
+                                                        "number",
+                                                        "null"
+                                                    ]
+                                                },
+                                                "xray_class": {
+                                                    "type": [
+                                                        "string",
+                                                        "null"
+                                                    ]
+                                                },
+                                                "radio_blackout": {
+                                                    "description": "R-scale storm level",
+                                                    "type": [
+                                                        "string",
+                                                        "null"
+                                                    ]
+                                                },
+                                                "solar_radiation": {
+                                                    "description": "S-scale storm level",
+                                                    "type": [
+                                                        "string",
+                                                        "null"
+                                                    ]
+                                                },
+                                                "geomagnetic": {
+                                                    "description": "G-scale storm level",
+                                                    "type": [
+                                                        "string",
+                                                        "null"
+                                                    ]
+                                                }
+                                            },
+                                            "type": "object"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "No samples ingested yet",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/stats/{breakdown}": {
+            "get": {
+                "tags": [
+                    "Stats"
+                ],
+                "summary": "Aggregated catalog breakdowns (summary / operators / countries / types / launch-years)",
+                "operationId": "8c5f3a963b82391efb37916a5c7eb1a7",
+                "parameters": [
+                    {
+                        "name": "breakdown",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "enum": [
+                                "summary",
+                                "operators",
+                                "countries",
+                                "types",
+                                "launch-years"
+                            ]
+                        }
+                    },
+                    {
+                        "name": "limit",
+                        "in": "query",
+                        "description": "Used by operators / countries breakdowns",
+                        "schema": {
+                            "type": "integer",
+                            "default": 50,
+                            "maximum": 200
+                        }
+                    },
+                    {
+                        "name": "since",
+                        "in": "query",
+                        "description": "Earliest year for launch-years breakdown (default 1957)",
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Breakdown payload; shape varies by {breakdown}",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "data": {
+                                            "type": "object"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Unknown breakdown",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/launches/upcoming": {
+            "get": {
+                "tags": [
+                    "Launches"
+                ],
+                "summary": "Upcoming launches (NET in the future, ordered ascending)",
+                "operationId": "d6e2831fd410b0f85cf7a0599476373d",
+                "parameters": [
+                    {
+                        "name": "limit",
+                        "in": "query",
+                        "schema": {
+                            "type": "integer",
+                            "default": 50,
+                            "maximum": 200
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Launches with pad metadata inlined",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/components/schemas/Launch"
+                                            }
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    },
+    "components": {
+        "schemas": {
+            "Conjunction": {
+                "properties": {
+                    "tca": {
+                        "type": "string",
+                        "format": "date-time"
+                    },
+                    "primary": {
+                        "type": "integer"
+                    },
+                    "secondary": {
+                        "type": "integer"
+                    },
+                    "miss_distance_km": {
+                        "type": "number"
+                    },
+                    "relative_velocity_km_s": {
+                        "type": "number"
+                    },
+                    "max_probability": {
+                        "type": "number"
+                    }
+                },
+                "type": "object"
+            },
+            "ErrorResponse": {
+                "properties": {
+                    "error": {
+                        "properties": {
+                            "code": {
+                                "type": "string",
+                                "example": "not_found"
+                            },
+                            "message": {
+                                "type": "string",
+                                "example": "Satellite 99999 not found"
+                            },
+                            "status": {
+                                "type": "integer",
+                                "example": 404
+                            }
+                        },
+                        "type": "object"
+                    }
+                },
+                "type": "object"
+            },
+            "GroupSummary": {
+                "properties": {
+                    "slug": {
+                        "type": "string",
+                        "example": "starlink"
+                    },
+                    "name": {
+                        "type": "string",
+                        "example": "Starlink"
+                    },
+                    "count": {
+                        "type": "integer",
+                        "example": 6500
+                    }
+                },
+                "type": "object"
+            },
+            "Launch": {
+                "properties": {
+                    "id": {
+                        "type": "string"
+                    },
+                    "name": {
+                        "type": "string"
+                    },
+                    "net": {
+                        "type": "string",
+                        "format": "date-time"
+                    },
+                    "status": {
+                        "type": "string"
+                    },
+                    "mission": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    },
+                    "launch_service_provider": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    },
+                    "rocket": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    },
+                    "pad_name": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    },
+                    "pad_location": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    },
+                    "webcast_url": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    }
+                },
+                "type": "object"
+            },
+            "PaginationLinks": {
+                "properties": {
+                    "self": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    },
+                    "next": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    },
+                    "prev": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    },
+                    "first": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    },
+                    "last": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    }
+                },
+                "type": "object"
+            },
+            "PaginationMeta": {
+                "properties": {
+                    "page": {
+                        "type": "integer",
+                        "example": 1
+                    },
+                    "per_page": {
+                        "type": "integer",
+                        "example": 100
+                    },
+                    "total": {
+                        "type": "integer",
+                        "example": 15665
+                    },
+                    "total_pages": {
+                        "type": "integer",
+                        "example": 157
+                    }
+                },
+                "type": "object"
+            },
+            "Pass": {
+                "properties": {
+                    "rise_at": {
+                        "type": "string",
+                        "format": "date-time"
+                    },
+                    "peak_at": {
+                        "type": "string",
+                        "format": "date-time"
+                    },
+                    "set_at": {
+                        "type": "string",
+                        "format": "date-time"
+                    },
+                    "max_elevation_deg": {
+                        "type": "number"
+                    },
+                    "magnitude": {
+                        "type": [
+                            "number",
+                            "null"
+                        ]
+                    }
+                },
+                "type": "object"
+            },
+            "RadioTransmitter": {
+                "description": "Amateur-radio transmitter from SatNOGS DB (Phase 5 chunk 1)",
+                "properties": {
+                    "uuid": {
+                        "type": "string"
+                    },
+                    "description": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    },
+                    "type": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "enum": [
+                            "Transmitter",
+                            "Receiver",
+                            "Transceiver",
+                            "Transponder"
+                        ]
+                    },
+                    "alive": {
+                        "type": "boolean"
+                    },
+                    "mode": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    },
+                    "baud": {
+                        "type": [
+                            "number",
+                            "null"
+                        ]
+                    },
+                    "service": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    },
+                    "status": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "enum": [
+                            "active",
+                            "inactive",
+                            "invalid"
+                        ]
+                    },
+                    "uplink_low_hz": {
+                        "type": [
+                            "integer",
+                            "null"
+                        ]
+                    },
+                    "uplink_high_hz": {
+                        "type": [
+                            "integer",
+                            "null"
+                        ]
+                    },
+                    "downlink_low_hz": {
+                        "type": [
+                            "integer",
+                            "null"
+                        ]
+                    },
+                    "downlink_high_hz": {
+                        "type": [
+                            "integer",
+                            "null"
+                        ]
+                    },
+                    "updated_at": {
+                        "type": "string",
+                        "format": "date-time"
+                    }
+                },
+                "type": "object"
+            },
+            "SatelliteDetail": {
+                "description": "Full satellite metadata, with tle_current inlined to save a round trip",
+                "properties": {
+                    "norad_id": {
+                        "type": "integer"
+                    },
+                    "intl_designator": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    },
+                    "name": {
+                        "type": "string"
+                    },
+                    "alt_names": {
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        }
+                    },
+                    "object_type": {
+                        "type": "string"
+                    },
+                    "status": {
+                        "type": "string"
+                    },
+                    "operator": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    },
+                    "country": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    },
+                    "launch_date": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "format": "date"
+                    },
+                    "launch_site_code": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    },
+                    "launch_vehicle": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    },
+                    "mission": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    },
+                    "orbit_class": {
+                        "type": "string"
+                    },
+                    "rcs_meters": {
+                        "type": [
+                            "number",
+                            "null"
+                        ],
+                        "format": "float"
+                    },
+                    "size_class": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    },
+                    "mass_kg": {
+                        "type": [
+                            "integer",
+                            "null"
+                        ]
+                    },
+                    "dimensions": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    },
+                    "purposes": {
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        }
+                    },
+                    "wikipedia_slug": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    },
+                    "has_3d_model": {
+                        "type": "boolean"
+                    },
+                    "image_url": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    },
+                    "decayed_at": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "format": "date-time"
+                    },
+                    "tle_current": {
+                        "oneOf": [
+                            {
+                                "$ref": "#/components/schemas/TleCurrent"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ]
+                    }
+                },
+                "type": "object"
+            },
+            "SatelliteSummary": {
+                "description": "Minimal satellite row returned by list endpoints",
+                "properties": {
+                    "norad_id": {
+                        "type": "integer",
+                        "example": 25544
+                    },
+                    "intl_designator": {
+                        "type": "string",
+                        "example": "1998-067A"
+                    },
+                    "name": {
+                        "type": "string",
+                        "example": "ISS (ZARYA)"
+                    },
+                    "object_type": {
+                        "type": "string",
+                        "example": "PAYLOAD"
+                    },
+                    "status": {
+                        "type": "string",
+                        "example": "active"
+                    },
+                    "country": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "example": "US"
+                    },
+                    "launch_date": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "format": "date"
+                    },
+                    "orbit_class": {
+                        "type": "string",
+                        "example": "LEO"
+                    }
+                },
+                "type": "object"
+            },
+            "TleCurrent": {
+                "description": "Most-recent two-line element set for a satellite",
+                "properties": {
+                    "epoch": {
+                        "type": "string",
+                        "format": "date-time"
+                    },
+                    "epoch_age_seconds": {
+                        "type": "integer"
+                    },
+                    "freshness": {
+                        "type": "string",
+                        "enum": [
+                            "FRESH",
+                            "STALE",
+                            "OLD"
+                        ]
+                    },
+                    "line1": {
+                        "type": "string"
+                    },
+                    "line2": {
+                        "type": "string"
+                    },
+                    "mean_motion": {
+                        "type": "number",
+                        "format": "float"
+                    },
+                    "eccentricity": {
+                        "type": "number",
+                        "format": "float"
+                    },
+                    "inclination_deg": {
+                        "type": "number",
+                        "format": "float"
+                    },
+                    "raan_deg": {
+                        "type": "number",
+                        "format": "float"
+                    },
+                    "arg_perigee_deg": {
+                        "type": "number",
+                        "format": "float"
+                    },
+                    "mean_anomaly_deg": {
+                        "type": "number",
+                        "format": "float"
+                    },
+                    "bstar": {
+                        "type": "number",
+                        "format": "float"
+                    },
+                    "rev_number": {
+                        "type": "integer"
+                    },
+                    "period_min": {
+                        "type": "number",
+                        "format": "float"
+                    },
+                    "perigee_km": {
+                        "type": "number",
+                        "format": "float"
+                    },
+                    "apogee_km": {
+                        "type": "number",
+                        "format": "float"
+                    },
+                    "semimajor_km": {
+                        "type": "number",
+                        "format": "float"
+                    },
+                    "source": {
+                        "type": "string"
+                    },
+                    "updated_at": {
+                        "type": "string",
+                        "format": "date-time"
+                    }
+                },
+                "type": "object"
+            }
+        }
+    },
+    "tags": [
+        {
+            "name": "Catalog",
+            "description": "Satellite catalog & TLE access"
+        },
+        {
+            "name": "Groups",
+            "description": "CelesTrak constellation groupings"
+        },
+        {
+            "name": "Launches",
+            "description": "Upcoming + recent missions"
+        },
+        {
+            "name": "Reentries",
+            "description": "Predicted atmospheric decays"
+        },
+        {
+            "name": "Conjunctions",
+            "description": "Close-approach predictions"
+        },
+        {
+            "name": "Space weather",
+            "description": "Geomagnetic + solar conditions"
+        },
+        {
+            "name": "Stats",
+            "description": "Aggregated catalog breakdowns"
+        },
+        {
+            "name": "Search",
+            "description": "Full-text + autocomplete lookups"
+        },
+        {
+            "name": "Radio",
+            "description": "Amateur-radio transmitters (SatNOGS DB)"
+        }
+    ]
+}

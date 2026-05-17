@@ -18,6 +18,7 @@ use SatTrackr\Cli\Commands\PruneCacheCommand;
 use SatTrackr\Cli\Commands\MakeMigrationCommand;
 use SatTrackr\Cli\Commands\MigrateCommand;
 use SatTrackr\Cli\Commands\MigrateStatusCommand;
+use SatTrackr\Cli\Commands\OpenApiDumpCommand;
 use SatTrackr\Cli\Commands\RollbackCommand;
 use Symfony\Component\Console\Application;
 
@@ -41,6 +42,7 @@ final class ConsoleKernel
         $app->add($container->get(IngestOvationCommand::class));
         $app->add($container->get(PruneCacheCommand::class));
         $app->add($container->get(HealthCommand::class));
+        $app->add($container->get(OpenApiDumpCommand::class));
 
         return $app;
     }
