@@ -5,6 +5,8 @@ import type * as Cesium from 'cesium';
 import type { SatGlobe } from './globe/Globe';
 import type { Clock } from './time/Clock';
 import { hasWebGL } from './util/webgl';
+import { getSharedObserver } from './observer/Observer';
+import { parseShareParams } from './share/shareUrl';
 import './ui/DetailPanel';
 import './ui/Timeline';
 import './ui/NoWebGL';
@@ -58,6 +60,11 @@ export class SatApp extends LitElement {
     this.addEventListener('panel-close', this.handlePanelClose as EventListener);
     this.addEventListener('clock-ready', this.handleClockReady as EventListener);
     this.addEventListener('ribbon-orbits-change', this.handleRibbonOrbits as EventListener);
+
+    // Phase 5 chunk 6 — deep-link restore from ?sat & lat & lon & alt & t.
+    // Observer is set immediately; sat selection waits for the globe (which
+    // mounts in updated()) and clock waits for the `clock-ready` event.
+    this.applyShareParamsFromUrl();
   }
 
   disconnectedCallback(): void {
@@ -71,7 +78,45 @@ export class SatApp extends LitElement {
 
   private handleClockReady = (e: CustomEvent<{ clock: Clock }>): void => {
     this.clock = e.detail.clock;
+    // Globe is ready now — drain any deferred share-URL actions.
+    if (this.pendingClockMs !== null) {
+      e.detail.clock.setTimeMs(this.pendingClockMs);
+      this.pendingClockMs = null;
+    }
+    if (this.pendingFlyToNorad !== null) {
+      this.applySelection(this.pendingFlyToNorad, /* fly */ true);
+      this.pendingFlyToNorad = null;
+    }
   };
+
+  /** Pending share-URL state held until the globe's Clock dispatches `clock-ready`. */
+  private pendingClockMs: number | null = null;
+  private pendingFlyToNorad: number | null = null;
+
+  private applyShareParamsFromUrl(): void {
+    const params = parseShareParams(window.location.search);
+
+    if (params.sat !== undefined && this.selected === null) {
+      this.selected = params.sat;
+      // Defer the camera fly + highlight until the globe is initialized.
+      this.pendingFlyToNorad = params.sat;
+    }
+
+    if (params.lat !== undefined && params.lon !== undefined) {
+      // Don't clobber an observer the user has already chosen (and which
+      // localStorage will have restored before we run). Share-URL state
+      // only wins when no observer is set yet.
+      const obs = getSharedObserver();
+      if (obs.getCurrent() === null) {
+        obs.setManual(params.lat, params.lon, params.altMeters ?? 0, 'Shared location');
+      }
+    }
+
+    if (params.t !== undefined) {
+      const ms = Date.parse(params.t);
+      if (!Number.isNaN(ms)) this.pendingClockMs = ms;
+    }
+  }
 
   /** Click-on-globe → just set selection (no camera fly). */
   private handleSelect = (e: CustomEvent<{ norad: number | null }>): void => {
