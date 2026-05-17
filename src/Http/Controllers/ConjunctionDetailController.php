@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace SatTrackr\Http\Controllers;
 
+use OpenApi\Attributes as OA;
 use Psr\Http\Message\ResponseInterface as Response;
 use Psr\Http\Message\ServerRequestInterface as Request;
 use SatTrackr\Database\Connection;
@@ -29,6 +30,22 @@ final class ConjunctionDetailController
     /**
      * @param array<string, string> $args
      */
+    #[OA\Get(
+        path: '/api/v1/conjunctions/{primary}/{secondary}',
+        summary: 'All active close-approach predictions for a NORAD pair',
+        description: 'Order-insensitive: /123/456 and /456/123 return the same rows.',
+        tags: ['Conjunctions'],
+        parameters: [
+            new OA\Parameter(name: 'primary',   in: 'path', required: true, schema: new OA\Schema(type: 'integer')),
+            new OA\Parameter(name: 'secondary', in: 'path', required: true, schema: new OA\Schema(type: 'integer')),
+        ],
+        responses: [
+            new OA\Response(response: 200, description: 'Conjunctions for this pair', content: new OA\JsonContent(properties: [
+                new OA\Property(property: 'data', type: 'array', items: new OA\Items(ref: '#/components/schemas/Conjunction')),
+            ])),
+            new OA\Response(response: 404, description: 'No conjunctions found for the pair', content: new OA\JsonContent(ref: '#/components/schemas/ErrorResponse')),
+        ],
+    )]
     public function __invoke(Request $request, Response $response, array $args): Response
     {
         $a = (int) ($args['primary'] ?? 0);

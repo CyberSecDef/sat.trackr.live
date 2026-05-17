@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace SatTrackr\Http\Controllers;
 
+use OpenApi\Attributes as OA;
 use Psr\Http\Message\ResponseInterface as Response;
 use Psr\Http\Message\ServerRequestInterface as Request;
 use SatTrackr\Database\Connection;
@@ -31,6 +32,23 @@ final class StatsController
 
     public function __construct(private readonly Connection $db) {}
 
+    #[OA\Get(
+        path: '/api/v1/stats/{breakdown}',
+        summary: 'Aggregated catalog breakdowns (summary / operators / countries / types / launch-years)',
+        tags: ['Stats'],
+        parameters: [
+            new OA\Parameter(name: 'breakdown', in: 'path',  required: true,
+                schema: new OA\Schema(type: 'string', enum: ['summary', 'operators', 'countries', 'types', 'launch-years'])),
+            new OA\Parameter(name: 'limit', in: 'query', schema: new OA\Schema(type: 'integer', default: 50, maximum: 200), description: 'Used by operators / countries breakdowns'),
+            new OA\Parameter(name: 'since', in: 'query', schema: new OA\Schema(type: 'integer'), description: 'Earliest year for launch-years breakdown (default 1957)'),
+        ],
+        responses: [
+            new OA\Response(response: 200, description: 'Breakdown payload; shape varies by {breakdown}', content: new OA\JsonContent(properties: [
+                new OA\Property(property: 'data', type: 'object'),
+            ])),
+            new OA\Response(response: 404, description: 'Unknown breakdown', content: new OA\JsonContent(ref: '#/components/schemas/ErrorResponse')),
+        ],
+    )]
     /**
      * @param array<string, string> $args
      */

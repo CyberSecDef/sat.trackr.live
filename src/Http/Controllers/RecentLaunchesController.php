@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace SatTrackr\Http\Controllers;
 
+use OpenApi\Attributes as OA;
 use Psr\Http\Message\ResponseInterface as Response;
 use Psr\Http\Message\ServerRequestInterface as Request;
 use SatTrackr\Database\Connection;
@@ -29,6 +30,20 @@ final class RecentLaunchesController
     /**
      * @param array<string, string> $args
      */
+    #[OA\Get(
+        path: '/api/v1/launches/recent',
+        summary: 'Recent launches (NET in the past, ordered descending)',
+        tags: ['Launches'],
+        parameters: [
+            new OA\Parameter(name: 'limit', in: 'query', schema: new OA\Schema(type: 'integer', default: 100, maximum: 500)),
+            new OA\Parameter(name: 'days',  in: 'query', schema: new OA\Schema(type: 'integer', default: 90)),
+        ],
+        responses: [
+            new OA\Response(response: 200, description: 'Recent launches', content: new OA\JsonContent(properties: [
+                new OA\Property(property: 'data', type: 'array', items: new OA\Items(ref: '#/components/schemas/Launch')),
+            ])),
+        ],
+    )]
     public function __invoke(Request $request, Response $response, array $args = []): Response
     {
         $params = $request->getQueryParams();

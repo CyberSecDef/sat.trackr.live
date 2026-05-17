@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace SatTrackr\Http\Controllers;
 
+use OpenApi\Attributes as OA;
 use Psr\Http\Message\ResponseInterface as Response;
 use Psr\Http\Message\ServerRequestInterface as Request;
 use SatTrackr\Database\Connection;
@@ -32,6 +33,30 @@ final class SatelliteListController
     /**
      * @param array<string, string> $args
      */
+    #[OA\Get(
+        path: '/api/v1/satellites',
+        summary: 'List satellites (paginated, filterable, FTS-searchable)',
+        tags: ['Catalog'],
+        parameters: [
+            new OA\Parameter(name: 'country',         in: 'query', schema: new OA\Schema(type: 'string'), description: 'Comma-separated ISO country codes'),
+            new OA\Parameter(name: 'operator',        in: 'query', schema: new OA\Schema(type: 'string')),
+            new OA\Parameter(name: 'type',            in: 'query', schema: new OA\Schema(type: 'string'), description: 'PAYLOAD / ROCKET_BODY / DEBRIS / UNKNOWN (comma-separated)'),
+            new OA\Parameter(name: 'status',          in: 'query', schema: new OA\Schema(type: 'string')),
+            new OA\Parameter(name: 'orbit_class',     in: 'query', schema: new OA\Schema(type: 'string'), description: 'LEO / MEO / GEO / HEO (comma-separated)'),
+            new OA\Parameter(name: 'launched_after',  in: 'query', schema: new OA\Schema(type: 'string', format: 'date')),
+            new OA\Parameter(name: 'launched_before', in: 'query', schema: new OA\Schema(type: 'string', format: 'date')),
+            new OA\Parameter(name: 'q',               in: 'query', schema: new OA\Schema(type: 'string'), description: 'FTS5 fuzzy match over name / intl_designator / operator'),
+            new OA\Parameter(name: 'page',            in: 'query', schema: new OA\Schema(type: 'integer', default: 1)),
+            new OA\Parameter(name: 'limit',           in: 'query', schema: new OA\Schema(type: 'integer', default: 100, maximum: 500)),
+        ],
+        responses: [
+            new OA\Response(response: 200, description: 'Page of matching satellites', content: new OA\JsonContent(properties: [
+                new OA\Property(property: 'data',  type: 'array', items: new OA\Items(ref: '#/components/schemas/SatelliteSummary')),
+                new OA\Property(property: 'meta',  ref: '#/components/schemas/PaginationMeta'),
+                new OA\Property(property: 'links', ref: '#/components/schemas/PaginationLinks'),
+            ])),
+        ],
+    )]
     public function __invoke(Request $request, Response $response, array $args = []): Response
     {
         $params = $request->getQueryParams();

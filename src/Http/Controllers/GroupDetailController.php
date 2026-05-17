@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace SatTrackr\Http\Controllers;
 
+use OpenApi\Attributes as OA;
 use Psr\Http\Message\ResponseInterface as Response;
 use Psr\Http\Message\ServerRequestInterface as Request;
 use SatTrackr\Database\Connection;
@@ -26,6 +27,23 @@ final class GroupDetailController
     /**
      * @param array<string, string> $args
      */
+    #[OA\Get(
+        path: '/api/v1/groups/{slug}',
+        summary: 'Group metadata + member NORADs',
+        tags: ['Groups'],
+        parameters: [new OA\Parameter(name: 'slug', in: 'path', required: true, schema: new OA\Schema(type: 'string'))],
+        responses: [
+            new OA\Response(response: 200, description: 'Group + members', content: new OA\JsonContent(properties: [
+                new OA\Property(property: 'data', type: 'object', properties: [
+                    new OA\Property(property: 'slug',      type: 'string'),
+                    new OA\Property(property: 'name',      type: 'string'),
+                    new OA\Property(property: 'count',     type: 'integer'),
+                    new OA\Property(property: 'norad_ids', type: 'array', items: new OA\Items(type: 'integer')),
+                ]),
+            ])),
+            new OA\Response(response: 404, description: 'Unknown group slug', content: new OA\JsonContent(ref: '#/components/schemas/ErrorResponse')),
+        ],
+    )]
     public function __invoke(Request $request, Response $response, array $args): Response
     {
         $slug = (string) ($args['slug'] ?? '');

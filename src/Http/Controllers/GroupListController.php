@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace SatTrackr\Http\Controllers;
 
+use OpenApi\Attributes as OA;
 use Psr\Http\Message\ResponseInterface as Response;
 use Psr\Http\Message\ServerRequestInterface as Request;
 use SatTrackr\Database\Connection;
@@ -26,6 +27,20 @@ final class GroupListController
     /**
      * @param array<string, string> $args
      */
+    #[OA\Get(
+        path: '/api/v1/groups',
+        summary: 'CelesTrak constellation groups with current member counts',
+        tags: ['Groups'],
+        responses: [
+            new OA\Response(response: 200, description: 'All configured groups', content: new OA\JsonContent(properties: [
+                new OA\Property(property: 'data', type: 'array', items: new OA\Items(ref: '#/components/schemas/GroupSummary')),
+                new OA\Property(property: 'meta', type: 'object', properties: [
+                    new OA\Property(property: 'total_groups', type: 'integer'),
+                    new OA\Property(property: 'source',       type: 'string'),
+                ]),
+            ])),
+        ],
+    )]
     public function __invoke(Request $request, Response $response, array $args = []): Response
     {
         $counts = [];

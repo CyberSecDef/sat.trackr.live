@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace SatTrackr\Http\Controllers;
 
+use OpenApi\Attributes as OA;
 use Psr\Http\Message\ResponseInterface as Response;
 use Psr\Http\Message\ServerRequestInterface as Request;
 use SatTrackr\Database\Connection;
@@ -31,6 +32,21 @@ final class SearchController
     /**
      * @param array<string, string> $args
      */
+    #[OA\Get(
+        path: '/api/v1/search',
+        summary: 'Universal search (NORAD / intl-designator / FTS5 name fuzzy)',
+        tags: ['Search'],
+        parameters: [new OA\Parameter(name: 'q', in: 'query', required: true, schema: new OA\Schema(type: 'string'))],
+        responses: [
+            new OA\Response(response: 200, description: 'Up to 50 results ranked by match strength', content: new OA\JsonContent(properties: [
+                new OA\Property(property: 'data', type: 'array', items: new OA\Items(type: 'object', properties: [
+                    new OA\Property(property: 'norad_id',   type: 'integer'),
+                    new OA\Property(property: 'name',       type: 'string'),
+                    new OA\Property(property: 'match_type', type: 'string', enum: ['norad', 'intl_designator', 'fts']),
+                ])),
+            ])),
+        ],
+    )]
     public function __invoke(Request $request, Response $response, array $args = []): Response
     {
         $q = trim((string) ($request->getQueryParams()['q'] ?? ''));

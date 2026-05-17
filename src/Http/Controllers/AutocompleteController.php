@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace SatTrackr\Http\Controllers;
 
+use OpenApi\Attributes as OA;
 use Psr\Http\Message\ResponseInterface as Response;
 use Psr\Http\Message\ServerRequestInterface as Request;
 use SatTrackr\Database\Connection;
@@ -28,6 +29,20 @@ final class AutocompleteController
     /**
      * @param array<string, string> $args
      */
+    #[OA\Get(
+        path: '/api/v1/autocomplete',
+        summary: 'Low-latency typeahead (up to 10 results)',
+        tags: ['Search'],
+        parameters: [new OA\Parameter(name: 'q', in: 'query', required: true, schema: new OA\Schema(type: 'string'))],
+        responses: [
+            new OA\Response(response: 200, description: 'Up to 10 autocomplete suggestions', content: new OA\JsonContent(properties: [
+                new OA\Property(property: 'data', type: 'array', items: new OA\Items(type: 'object', properties: [
+                    new OA\Property(property: 'norad_id', type: 'integer'),
+                    new OA\Property(property: 'name',     type: 'string'),
+                ])),
+            ])),
+        ],
+    )]
     public function __invoke(Request $request, Response $response, array $args = []): Response
     {
         $q = trim((string) ($request->getQueryParams()['q'] ?? ''));

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace SatTrackr\Http\Controllers;
 
+use OpenApi\Attributes as OA;
 use Psr\Http\Message\ResponseInterface as Response;
 use Psr\Http\Message\ServerRequestInterface as Request;
 use SatTrackr\Database\Connection;
@@ -42,6 +43,31 @@ final class SatellitePassesController
     /**
      * @param array<string, string> $args
      */
+    #[OA\Get(
+        path: '/api/v1/satellites/{norad}/passes',
+        summary: 'Observer-local pass predictions (SGP4 + optional N2YO magnitude)',
+        tags: ['Catalog'],
+        parameters: [
+            new OA\Parameter(name: 'norad', in: 'path',  required: true, schema: new OA\Schema(type: 'integer')),
+            new OA\Parameter(name: 'lat',   in: 'query', required: true, schema: new OA\Schema(type: 'number'), description: 'Observer latitude in degrees'),
+            new OA\Parameter(name: 'lon',   in: 'query', required: true, schema: new OA\Schema(type: 'number'), description: 'Observer longitude in degrees'),
+            new OA\Parameter(name: 'alt',   in: 'query', schema: new OA\Schema(type: 'number', default: 0), description: 'Observer altitude in meters'),
+            new OA\Parameter(name: 'days',  in: 'query', schema: new OA\Schema(type: 'integer', default: 7, maximum: 14)),
+            new OA\Parameter(name: 'min_elevation_deg', in: 'query', schema: new OA\Schema(type: 'number', default: 10)),
+        ],
+        responses: [
+            new OA\Response(response: 200, description: 'Up to N upcoming passes, cached for ~6h per observer-day', content: new OA\JsonContent(properties: [
+                new OA\Property(property: 'data', type: 'array', items: new OA\Items(ref: '#/components/schemas/Pass')),
+                new OA\Property(property: 'meta', type: 'object', properties: [
+                    new OA\Property(property: 'norad_id', type: 'integer'),
+                    new OA\Property(property: 'from_cache', type: 'boolean'),
+                    new OA\Property(property: 'observer', type: 'object'),
+                ]),
+            ])),
+            new OA\Response(response: 400, description: 'Missing/invalid observer params', content: new OA\JsonContent(ref: '#/components/schemas/ErrorResponse')),
+            new OA\Response(response: 404, description: 'Unknown NORAD', content: new OA\JsonContent(ref: '#/components/schemas/ErrorResponse')),
+        ],
+    )]
     public function __invoke(Request $request, Response $response, array $args): Response
     {
         $norad = (int) ($args['norad'] ?? 0);

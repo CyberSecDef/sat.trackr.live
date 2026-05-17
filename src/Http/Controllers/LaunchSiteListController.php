@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace SatTrackr\Http\Controllers;
 
+use OpenApi\Attributes as OA;
 use Psr\Http\Message\ResponseInterface as Response;
 use Psr\Http\Message\ServerRequestInterface as Request;
 use SatTrackr\Database\Connection;
@@ -25,6 +26,22 @@ final class LaunchSiteListController
     /**
      * @param array<string, string> $args
      */
+    #[OA\Get(
+        path: '/api/v1/launch-sites',
+        summary: 'All launch pads currently in the catalog',
+        tags: ['Launches'],
+        responses: [
+            new OA\Response(response: 200, description: 'Launch pads with coordinates', content: new OA\JsonContent(properties: [
+                new OA\Property(property: 'data', type: 'array', items: new OA\Items(type: 'object', properties: [
+                    new OA\Property(property: 'code',      type: 'string'),
+                    new OA\Property(property: 'name',      type: 'string'),
+                    new OA\Property(property: 'latitude',  type: 'number', nullable: true),
+                    new OA\Property(property: 'longitude', type: 'number', nullable: true),
+                    new OA\Property(property: 'country',   type: 'string', nullable: true),
+                ])),
+            ])),
+        ],
+    )]
     public function __invoke(Request $request, Response $response, array $args = []): Response
     {
         $rows = $this->db->capsule()->table('launch_sites')

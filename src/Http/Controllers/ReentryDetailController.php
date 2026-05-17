@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace SatTrackr\Http\Controllers;
 
+use OpenApi\Attributes as OA;
 use Psr\Http\Message\ResponseInterface as Response;
 use Psr\Http\Message\ServerRequestInterface as Request;
 use SatTrackr\Database\Connection;
@@ -27,6 +28,18 @@ final class ReentryDetailController
     /**
      * @param array<string, string> $args
      */
+    #[OA\Get(
+        path: '/api/v1/reentries/{norad}',
+        summary: 'Reentry prediction for a single NORAD',
+        tags: ['Reentries'],
+        parameters: [new OA\Parameter(name: 'norad', in: 'path', required: true, schema: new OA\Schema(type: 'integer'))],
+        responses: [
+            new OA\Response(response: 200, description: 'Reentry detail (freshest source)', content: new OA\JsonContent(properties: [
+                new OA\Property(property: 'data', type: 'object'),
+            ])),
+            new OA\Response(response: 404, description: 'No active prediction', content: new OA\JsonContent(ref: '#/components/schemas/ErrorResponse')),
+        ],
+    )]
     public function __invoke(Request $request, Response $response, array $args): Response
     {
         $norad = (int) ($args['norad'] ?? 0);

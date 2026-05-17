@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace SatTrackr\Http\Controllers;
 
+use OpenApi\Attributes as OA;
 use Psr\Http\Message\ResponseInterface as Response;
 use Psr\Http\Message\ServerRequestInterface as Request;
 use SatTrackr\Database\Connection;
@@ -28,6 +29,26 @@ final class GroupTlesController
     /**
      * @param array<string, string> $args
      */
+    #[OA\Get(
+        path: '/api/v1/groups/{slug}/tles',
+        summary: 'Bulk TLE bundle for every active satellite in a group',
+        description: 'Hot SPA endpoint. Returns one large gzip-friendly JSON of all current TLEs for the group; designed for client-side bulk propagation. Decayed objects are filtered out.',
+        tags: ['Groups'],
+        parameters: [new OA\Parameter(name: 'slug', in: 'path', required: true, schema: new OA\Schema(type: 'string'))],
+        responses: [
+            new OA\Response(response: 200, description: 'TLE bundle', content: new OA\JsonContent(properties: [
+                new OA\Property(property: 'data', type: 'array', items: new OA\Items(type: 'object', properties: [
+                    new OA\Property(property: 'norad_id',    type: 'integer'),
+                    new OA\Property(property: 'name',        type: 'string'),
+                    new OA\Property(property: 'line1',       type: 'string'),
+                    new OA\Property(property: 'line2',       type: 'string'),
+                    new OA\Property(property: 'object_type', type: 'string'),
+                ])),
+                new OA\Property(property: 'meta', type: 'object'),
+            ])),
+            new OA\Response(response: 404, description: 'Unknown group slug', content: new OA\JsonContent(ref: '#/components/schemas/ErrorResponse')),
+        ],
+    )]
     public function __invoke(Request $request, Response $response, array $args): Response
     {
         $slug = (string) ($args['slug'] ?? '');
