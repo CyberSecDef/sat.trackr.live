@@ -151,6 +151,7 @@ final class Container
                     appName: $c->get('app.name'),
                     appUrl: $c->get('app.url'),
                     cesiumIonToken: EnvLoader::get('CESIUM_ION_TOKEN', '') ?? '',
+                    db: $c->get(Connection::class),
                 );
             },
 

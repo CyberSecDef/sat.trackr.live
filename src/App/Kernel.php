@@ -77,6 +77,8 @@ final class Kernel
         // SPA routes — render the shell, client-side router takes over.
         $app->get('/', SpaShellController::class);
         $app->get('/satellite/{norad:[0-9]+}', SpaShellController::class);
+        // Phase 6 chunk 1 — conjunction-replay scene routes to the same SPA shell.
+        $app->get('/conjunction/{primary:[0-9]+}/{secondary:[0-9]+}', SpaShellController::class);
 
         // Text-only catalog (chunk 8) — server-rendered HTML, no JSON middleware.
         // Per req_spec §24, this is the WebGL/no-JS fallback path.

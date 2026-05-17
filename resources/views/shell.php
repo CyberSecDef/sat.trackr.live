@@ -20,6 +20,12 @@ $selectedAttr = $selectedNorad !== null
     ? ' selected-norad="' . htmlspecialchars((string) $selectedNorad, ENT_QUOTES) . '"'
     : '';
 
+// Phase 6 chunk 1 — replay context for /conjunction/{primary}/{secondary}.
+// SpaShellController resolves the soonest TCA for the pair; the SPA reads
+// this JSON blob at boot and enters replay mode without an extra fetch.
+$replayContext = $replayContext ?? null;
+$replayAttr = $replayContext !== null ? ' replay-mode="conjunction"' : '';
+
 // Phase 5 chunk 4 — pick the right OG card for the current route.
 $ogImagePath = $selectedNorad !== null
     ? "/og/satellite/{$selectedNorad}.png"
@@ -76,8 +82,11 @@ $ogImageUrl = rtrim($appUrl, '/') . $ogImagePath;
   <?= $vite->tagsForEntry('resources/js/main.ts') ?>
 </head>
 <body>
+  <?php if ($replayContext !== null): ?>
+    <script id="sat-replay-context" type="application/json"><?= json_encode($replayContext, JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR) ?></script>
+  <?php endif; ?>
   <sat-app
-    cesium-ion-token="<?= htmlspecialchars($cesiumIonToken, ENT_QUOTES) ?>"<?= $selectedAttr ?>
+    cesium-ion-token="<?= htmlspecialchars($cesiumIonToken, ENT_QUOTES) ?>"<?= $selectedAttr ?><?= $replayAttr ?>
   >
     <div class="app-loading">
       <div class="app-loading__brand">
