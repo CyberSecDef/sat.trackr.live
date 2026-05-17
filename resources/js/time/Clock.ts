@@ -24,6 +24,17 @@ export class Clock {
   /** ms epoch of the most recent tick. Useful for change detection. */
   public lastTickMs: number;
 
+  /**
+   * Phase 6 chunk 1 — read-only escape hatch onto the underlying
+   * Cesium.Clock so ConjunctionScene can temporarily rewrite the
+   * scrubbable window (startTime / stopTime / clockRange) for replay
+   * mode without forcing the Clock facade to grow methods for every
+   * one-off use case.
+   */
+  public get cesium(): Cesium.Clock {
+    return this.cesiumClock;
+  }
+
   constructor(private readonly cesiumClock: Cesium.Clock) {
     const nowMs = Date.now();
     this.cesiumClock.startTime = Cesium.JulianDate.fromDate(new Date(nowMs - SEVEN_DAYS_MS));

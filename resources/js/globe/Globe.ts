@@ -14,6 +14,8 @@ import { OrbitRibbonLayer } from './OrbitRibbonLayer';
 import { PointPrimitiveLayer } from './PointPrimitiveLayer';
 import { SelectionController } from './SelectionController';
 import { getSharedOverlays, type OverlayState } from '../overlays/OverlayService';
+import { ConjunctionScene } from './ConjunctionScene';
+import type { ReplayContext } from '../replay/replayContext';
 
 /** The CelesTrak group we render at chunk 5; chunk 6+ may parameterize this. */
 const DEFAULT_GROUP = 'active';
@@ -24,7 +26,7 @@ const DEFAULT_GROUP = 'active';
  * Lit's reactive render cycle.
  */
 export class Globe {
-  private viewer?: Cesium.Viewer;
+  public viewer?: Cesium.Viewer;
   public layer?: PointPrimitiveLayer;
   public ribbons?: OrbitRibbonLayer;
   public marquee?: MarqueeShapeLayer;
@@ -33,6 +35,8 @@ export class Globe {
   public aurora?: AuroraOverlayLayer;
   public selection?: SelectionController;
   public clock?: Clock;
+  /** Phase 6 chunk 1 — non-null while a conjunction replay is active. */
+  public conjunctionScene?: ConjunctionScene;
   private ribbonTickUnsub: (() => void) | null = null;
   private marqueeTickUnsub: (() => void) | null = null;
   private overlayUnsub: (() => void) | null = null;
@@ -154,6 +158,25 @@ export class Globe {
       opts.onStatus(`Failed to load satellites: ${msg}`);
       console.error('Globe failed to load satellites:', err);
     }
+  }
+
+  /**
+   * Phase 6 chunk 1 — enter conjunction-replay mode. Sets up the chase
+   * camera, clock window, and clock pause via {@link ConjunctionScene}.
+   * Returns the active scene so callers can dispose later.
+   */
+  async enterConjunctionReplay(ctx: ReplayContext): Promise<ConjunctionScene> {
+    this.conjunctionScene?.dispose();
+    const scene = new ConjunctionScene(this, ctx);
+    this.conjunctionScene = scene;
+    await scene.activate();
+    return scene;
+  }
+
+  /** Tear down any active conjunction replay. No-op when none active. */
+  exitConjunctionReplay(): void {
+    this.conjunctionScene?.dispose();
+    this.conjunctionScene = undefined;
   }
 
   /**
