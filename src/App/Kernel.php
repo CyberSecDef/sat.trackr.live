@@ -12,6 +12,7 @@ use SatTrackr\Http\Controllers\LaunchDetailController;
 use SatTrackr\Http\Controllers\LaunchSiteListController;
 use SatTrackr\Http\Controllers\RecentLaunchesController;
 use SatTrackr\Http\Controllers\SatelliteDetailController;
+use SatTrackr\Http\Controllers\OgImageController;
 use SatTrackr\Http\Controllers\OpenApiController;
 use SatTrackr\Http\Controllers\SatelliteListController;
 use SatTrackr\Http\Controllers\SwaggerUiController;
@@ -144,6 +145,13 @@ final class Kernel
 
         // Swagger UI lives outside the JSON middleware group — it's an HTML page.
         $app->get('/api/v1/docs', SwaggerUiController::class);
+
+        // OG image cards (Phase 5 chunk 4) — outside the JSON middleware group.
+        // /og/events.png has no id segment; the {id} pattern allows a dot-
+        // suffix so we keep the .png extension visible in the URL even
+        // though it's served from PHP.
+        $app->get('/og/events.png',           OgImageController::class)->setArgument('type', 'events')->setArgument('id', '');
+        $app->get('/og/{type:[a-z]+}/{id:[A-Za-z0-9_-]+}.png', OgImageController::class);
         // CORS lives at the app level (above) — see comment in createApp().
     }
 }

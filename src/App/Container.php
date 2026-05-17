@@ -30,6 +30,7 @@ use SatTrackr\Cli\Commands\RollbackCommand;
 use SatTrackr\Database\Connection;
 use SatTrackr\Database\Migrator;
 use SatTrackr\Http\Controllers\AutocompleteController;
+use SatTrackr\Http\Controllers\OgImageController;
 use SatTrackr\Http\Controllers\OpenApiController;
 use SatTrackr\Http\Controllers\SwaggerUiController;
 use SatTrackr\Http\Controllers\GroupDetailController;
@@ -97,6 +98,7 @@ use SatTrackr\Http\Controllers\Text\TextLaunchListController;
 use SatTrackr\Http\Controllers\Text\TextSatelliteController;
 use SatTrackr\Http\Controllers\Text\TextSearchController;
 use SatTrackr\Services\HttpClientFactory;
+use SatTrackr\Services\OgImageGenerator;
 use SatTrackr\Services\OpenApiGenerator;
 use SatTrackr\Services\TextRenderer;
 use SatTrackr\Services\ViteAssetResolver;
@@ -165,6 +167,13 @@ final class Container
             OpenApiGenerator::class    => static fn () => new OpenApiGenerator($rootDir),
             OpenApiController::class   => static fn (DIContainer $c) => new OpenApiController($c->get(OpenApiGenerator::class)),
             SwaggerUiController::class => static fn () => new SwaggerUiController(),
+            // OG image cards (Phase 5 chunk 4)
+            OgImageGenerator::class    => static fn () => new OgImageGenerator(),
+            OgImageController::class   => static fn (DIContainer $c) => new OgImageController(
+                $c->get(OgImageGenerator::class),
+                $c->get(Connection::class),
+                $rootDir . '/storage/cache/og',
+            ),
             TextRenderer::class        => static fn () => new TextRenderer($rootDir),
 
             // Events feed (Phase 4 chunk 6)
