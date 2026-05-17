@@ -85,6 +85,15 @@ final class TextConjunctionListController
             body:  $body,
             activeNav: 'conjunctions',
             description: "Top {$limit} of {$total} predicted close-approaches in the next {$hours} hours.",
+            canonicalPath: '/text/conjunctions',
+            // Phase 5 chunk 5 — schema.org CollectionPage for the listing.
+            jsonLd: [
+                '@context'    => 'https://schema.org',
+                '@type'       => 'CollectionPage',
+                'name'        => 'Predicted conjunctions — sat.trackr.live',
+                'description' => "Top {$limit} of {$total} predicted close-approaches in the next {$hours} hours.",
+                'url'         => '/text/conjunctions',
+            ],
         );
 
         $response->getBody()->write($html);

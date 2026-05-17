@@ -17,6 +17,10 @@ $activeNav = $activeNav ?? '';
 $description = $description ?? 'Text catalog of every tracked satellite in Earth orbit. Phase 1 fallback for browsers without WebGL.';
 // Phase 5 chunk 4 — per-page OG card, defaults to the events / top-conjunctions summary.
 $ogImage = $ogImage ?? '/og/events.png';
+// Phase 5 chunk 5 — canonical link + optional structured-data JSON-LD.
+// $canonicalHref + $jsonLd are pre-resolved by TextRenderer::renderPage.
+$canonicalHref = $canonicalHref ?? null;
+$jsonLd = $jsonLd ?? null;
 ?>
 <!DOCTYPE html>
 <html lang="en" data-theme="dark">
@@ -34,6 +38,12 @@ $ogImage = $ogImage ?? '/og/events.png';
   <meta property="og:image:height" content="630">
   <meta name="twitter:card" content="summary_large_image">
   <meta name="twitter:image" content="<?= htmlspecialchars($ogImage, ENT_QUOTES) ?>">
+  <?php if ($canonicalHref !== null): ?>
+    <link rel="canonical" href="<?= htmlspecialchars($canonicalHref, ENT_QUOTES) ?>">
+  <?php endif; ?>
+  <?php if ($jsonLd !== null): ?>
+    <script type="application/ld+json"><?= json_encode($jsonLd, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_THROW_ON_ERROR) ?></script>
+  <?php endif; ?>
   <link rel="icon" type="image/svg+xml" href="/favicon.svg">
   <!-- Phase 5 chunk 2 — installable PWA + offline cache for /text -->
   <link rel="manifest" href="/manifest.webmanifest">

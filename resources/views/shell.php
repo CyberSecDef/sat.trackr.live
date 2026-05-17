@@ -43,6 +43,7 @@ $ogImageUrl = rtrim($appUrl, '/') . $ogImagePath;
   <meta property="og:image:height" content="630">
   <meta name="twitter:card" content="summary_large_image">
   <meta name="twitter:image" content="<?= htmlspecialchars($ogImageUrl, ENT_QUOTES) ?>">
+  <link rel="canonical" href="<?= htmlspecialchars($appUrl, ENT_QUOTES) ?>/">
   <link rel="icon" type="image/svg+xml" href="/favicon.svg">
   <!-- Phase 5 chunk 2 — installable PWA -->
   <link rel="manifest" href="/manifest.webmanifest">

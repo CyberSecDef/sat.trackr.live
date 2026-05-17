@@ -13,16 +13,29 @@ final class TextRenderer
 {
     public function __construct(
         private readonly string $rootDir,
+        private readonly string $appUrl = '',
     ) {
     }
 
+    /**
+     * @param array<string, mixed>|null $jsonLd Optional schema.org JSON-LD payload
+     */
     public function renderPage(
         string $title,
         string $body,
         string $activeNav = '',
         string $description = '',
         ?string $ogImage = null,
+        ?string $canonicalPath = null,
+        ?array $jsonLd = null,
     ): string {
+        // Build the canonical absolute URL once so the template stays dumb.
+        $canonicalHref = null;
+        if ($canonicalPath !== null) {
+            $canonicalHref = $this->appUrl !== ''
+                ? rtrim($this->appUrl, '/') . $canonicalPath
+                : $canonicalPath;
+        }
         ob_start();
         require $this->rootDir . '/resources/views/text/layout.php';
         return (string) ob_get_clean();

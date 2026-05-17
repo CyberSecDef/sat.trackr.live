@@ -54,6 +54,27 @@ final class TextLaunchDetailController
         $launch = LaunchSerializer::detail($row);
 
         $body = $this->renderer->renderInner('launch_detail.php', ['launch' => $launch]);
+        // Phase 5 chunk 5 — schema.org Event card for launches.
+        $jsonLd = [
+            '@context'    => 'https://schema.org',
+            '@type'       => 'Event',
+            'name'        => (string) $launch['name'],
+            'startDate'   => (string) ($launch['net'] ?? ''),
+            'eventStatus' => match ((string) ($launch['status'] ?? '')) {
+                'GO', 'TBD'    => 'https://schema.org/EventScheduled',
+                'SUCCESS', 'FAILURE', 'PARTIAL_FAILURE' => 'https://schema.org/EventScheduled',
+                'HOLD'         => 'https://schema.org/EventPostponed',
+                default        => 'https://schema.org/EventScheduled',
+            },
+            'eventAttendanceMode' => 'https://schema.org/OnlineEventAttendanceMode',
+            'url'         => '/text/launches/' . rawurlencode($id),
+            'image'       => '/og/launch/' . rawurlencode($id) . '.png',
+            'description' => (string) ($launch['mission_name'] ?? $launch['name']),
+        ];
+        if (!empty($launch['provider'])) {
+            $jsonLd['organizer'] = ['@type' => 'Organization', 'name' => (string) $launch['provider']];
+        }
+
         $html = $this->renderer->renderPage(
             title: (string) $launch['name'],
             body: $body,
@@ -62,6 +83,8 @@ final class TextLaunchDetailController
                 . ($launch['provider'] ?? 'unknown provider')
                 . ' · NET ' . ($launch['net'] ?? '?'),
             ogImage: '/og/launch/' . rawurlencode($id) . '.png',
+            canonicalPath: '/text/launches/' . rawurlencode($id),
+            jsonLd: $jsonLd,
         );
         $response->getBody()->write($html);
         return $response->withHeader('Content-Type', 'text/html; charset=utf-8');

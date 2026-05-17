@@ -72,12 +72,28 @@ final class TextSatelliteController
         $description = "Catalog entry for {$name} (NORAD {$norad}). "
             . ($tle !== null ? "Period {$this->fmt($tle['period_min'])}min, inclination {$this->fmt($tle['inclination_deg'])}°." : 'No current TLE on file.');
 
+        // Phase 5 chunk 5 — schema.org Thing card for richer search snippets.
+        $jsonLd = [
+            '@context'    => 'https://schema.org',
+            '@type'       => 'Thing',
+            'name'        => $name,
+            'description' => $description,
+            'identifier'  => "NORAD:{$norad}",
+            'url'         => "/text/satellite/{$norad}",
+            'image'       => "/og/satellite/{$norad}.png",
+        ];
+        if (!empty($sat['intl_designator'])) {
+            $jsonLd['alternateName'] = (string) $sat['intl_designator'];
+        }
+
         $html = $this->renderer->renderPage(
             title: $name,
             body: $body,
             activeNav: 'catalog',
             description: $description,
             ogImage: "/og/satellite/{$norad}.png",
+            canonicalPath: "/text/satellite/{$norad}",
+            jsonLd: $jsonLd,
         );
         $response->getBody()->write($html);
         return $response->withHeader('Content-Type', 'text/html; charset=utf-8');
