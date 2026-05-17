@@ -63,10 +63,14 @@ export const MARQUEE_SPECS: ReadonlyArray<MarqueeSpec> = [
   {
     label: 'ISS (ZARYA)',
     norad: 25544,
-    shape: 'panel',                // wide flat box approximating the truss + arrays
+    shape: 'panel',                // wide flat box approximating the truss + arrays (fallback when glTF absent)
     dimensionsMeters: { x: 108, y: 73, z: 20 },
-    visualScale: 120,
+    visualScale: 120,              // applied to both glTF (Cesium.Model.scale) and procedural primitive — keeps on-screen size consistent
     color: C('#e8e8e8'),
+    // Phase 5 chunk 7 — real NASA Solar System Exploration glTF.
+    // Run `make fetch-models` to populate; falls back to procedural panel
+    // automatically when the file is absent. See public/models/CREDITS.md.
+    gltfUri: '/models/iss.glb',
   },
   {
     label: 'Tiangong (CSS)',
