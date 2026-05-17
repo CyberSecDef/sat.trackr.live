@@ -27,6 +27,7 @@ use SatTrackr\Cli\Commands\MigrateCommand;
 use SatTrackr\Cli\Commands\MigrateStatusCommand;
 use SatTrackr\Cli\Commands\OpenApiDumpCommand;
 use SatTrackr\Cli\Commands\RollbackCommand;
+use SatTrackr\Cli\Commands\SitemapBuildCommand;
 use SatTrackr\Database\Connection;
 use SatTrackr\Database\Migrator;
 use SatTrackr\Http\Controllers\AutocompleteController;
@@ -100,6 +101,7 @@ use SatTrackr\Http\Controllers\Text\TextSearchController;
 use SatTrackr\Services\HttpClientFactory;
 use SatTrackr\Services\OgImageGenerator;
 use SatTrackr\Services\OpenApiGenerator;
+use SatTrackr\Services\SitemapBuilder;
 use SatTrackr\Services\TextRenderer;
 use SatTrackr\Services\ViteAssetResolver;
 
@@ -174,7 +176,14 @@ final class Container
                 $c->get(Connection::class),
                 $rootDir . '/storage/cache/og',
             ),
-            TextRenderer::class        => static fn () => new TextRenderer($rootDir),
+
+            // Sitemap (Phase 5 chunk 5)
+            SitemapBuilder::class      => static fn (DIContainer $c) => new SitemapBuilder(
+                db:        $c->get(Connection::class),
+                publicDir: $rootDir . '/public',
+                baseUrl:   $c->get('app.url'),
+            ),
+            TextRenderer::class        => static fn (DIContainer $c) => new TextRenderer($rootDir, $c->get('app.url')),
 
             // Events feed (Phase 4 chunk 6)
             EventsAggregator::class    => static fn (DIContainer $c) => new EventsAggregator($c->get(Connection::class)),
@@ -408,6 +417,9 @@ final class Container
             OpenApiDumpCommand::class     => static fn (DIContainer $c) => new OpenApiDumpCommand(
                 $c->get(OpenApiGenerator::class),
                 $rootDir,
+            ),
+            SitemapBuildCommand::class    => static fn (DIContainer $c) => new SitemapBuildCommand(
+                $c->get(SitemapBuilder::class),
             ),
         ]);
 

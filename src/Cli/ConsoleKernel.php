@@ -20,6 +20,7 @@ use SatTrackr\Cli\Commands\MigrateCommand;
 use SatTrackr\Cli\Commands\MigrateStatusCommand;
 use SatTrackr\Cli\Commands\OpenApiDumpCommand;
 use SatTrackr\Cli\Commands\RollbackCommand;
+use SatTrackr\Cli\Commands\SitemapBuildCommand;
 use Symfony\Component\Console\Application;
 
 final class ConsoleKernel
@@ -43,6 +44,7 @@ final class ConsoleKernel
         $app->add($container->get(PruneCacheCommand::class));
         $app->add($container->get(HealthCommand::class));
         $app->add($container->get(OpenApiDumpCommand::class));
+        $app->add($container->get(SitemapBuildCommand::class));
 
         return $app;
     }
