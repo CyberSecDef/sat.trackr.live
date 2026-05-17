@@ -150,6 +150,10 @@ ingest-satnogs: ## Refresh amateur-radio transmitter catalog from SatNOGS DB (Ph
 openapi-dump: ## Regenerate public/openapi.json from controller attributes (Phase 5 chunk 3)
 	php bin/console openapi:dump
 
+.PHONY: sitemap-build
+sitemap-build: ## Regenerate sitemap.xml + chunked sitemap-{n}.xml from the catalog (Phase 5 chunk 5)
+	php bin/console sitemap:build
+
 .PHONY: ingest-ovation
 ingest-ovation: ## Refresh the NOAA OVATION aurora-forecast raster (Phase 4 chunk 4)
 	php bin/console ingest:ovation
