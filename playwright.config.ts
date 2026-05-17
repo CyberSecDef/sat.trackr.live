@@ -13,6 +13,11 @@ export default defineConfig({
   testDir: './tests/E2E',
   testMatch: /.*\.spec\.ts$/,
   fullyParallel: false,                    // single-server, single-browser
+  // Phase 6 chunk 4 — bumped from the 30s default. Cesium init under
+  // sustained load (running all 30+ specs back-to-back) routinely
+  // pushes per-test wall time past 30s on the slower specs; individual
+  // tests can still opt in to test.slow() for further headroom.
+  timeout: 60_000,
   retries: 0,
   reporter: [['list']],
 
