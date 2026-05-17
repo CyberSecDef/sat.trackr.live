@@ -1,6 +1,15 @@
 # Phase 6 Design — sat.trackr.live
 
-**Status:** Plan locked 2026-05-16; chunk 1 not yet started.
+**Status:** ✅ **Closed 2026-05-17.** All four chunks landed. The
+marquee replay scene ships from `/conjunction/{primary}/{secondary}`:
+chase camera + dual ribbons + HUD with live miss/countdown + Play/Pause
++ TCA-moment cyan pulse + entry points from `/text/conjunctions` and
+the Atom feed. Test totals: 245 PHP / 118 JS / 35 e2e.
+
+Project is in maintenance mode after Phase 6 close. This doc preserves
+the locked design + decisions for historical reference; the README
+chunk-table is the canonical "what shipped" record.
+
 **Scope:** The marquee showcase moment Phase 4 deferred — a 3D replay of
 two satellites converging at their closest approach (TCA).
 **Target:** Convert the conjunction *data* Phase 4 built into something
