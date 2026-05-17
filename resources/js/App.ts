@@ -1,4 +1,4 @@
-import { LitElement, html, css } from 'lit';
+import { LitElement, html, css, nothing } from 'lit';
 import { customElement, property, state } from 'lit/decorators.js';
 import { ref, createRef, type Ref } from 'lit/directives/ref.js';
 import type * as Cesium from 'cesium';
@@ -204,6 +204,12 @@ export class SatApp extends LitElement {
             .norad=${this.selected}
             .getCurrentPosition=${this.getCurrentPosition}
           ></sat-detail-panel>
+          ${this.replayContext !== null
+            ? html`<sat-conjunction-hud
+                .ctx=${this.replayContext}
+                .globe=${this.globeRef.value?.globe ?? null}
+              ></sat-conjunction-hud>`
+            : nothing}
         </div>
         <sat-timeline .clock=${this.clock}></sat-timeline>
         <sat-station-tooltip></sat-station-tooltip>

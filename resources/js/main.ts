@@ -8,6 +8,7 @@ import './ui/Search';
 import './ui/ObserverPill';
 import './ui/OverlaysMenu';
 import './ui/SpaceWeatherPill';
+import './ui/ConjunctionHud';
 import './ui/ShareButton';
 import './ui/StationTooltip';
 import './ui/TopBar';

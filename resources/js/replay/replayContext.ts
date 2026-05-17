@@ -95,3 +95,41 @@ export function replayWindowMs(ctx: ReplayContext): [number, number] {
   const t = Date.parse(ctx.tca);
   return [t - REPLAY_WINDOW_MS, t + REPLAY_WINDOW_MS];
 }
+
+/**
+ * Format a signed offset from TCA (current clock time minus TCA, in ms)
+ * as a HUD countdown — "T-02:34", "T+00:11", "T+00:00".
+ *
+ * Pure for unit testing; HUD calls this on every tick.
+ */
+export function formatTcaCountdown(offsetMs: number): string {
+  const sign = offsetMs >= 0 ? '+' : '-';
+  const abs = Math.abs(offsetMs);
+  const totalSecs = Math.floor(abs / 1000);
+  const mm = String(Math.floor(totalSecs / 60)).padStart(2, '0');
+  const ss = String(totalSecs % 60).padStart(2, '0');
+  return `T${sign}${mm}:${ss}`;
+}
+
+/**
+ * Format a miss-distance reading for the HUD.  km when ≥ 1 km, m
+ * otherwise — both with 2 significant digits past the decimal.  Stays
+ * stable in width so the HUD doesn't jitter as numbers change.
+ */
+export function formatMissDistance(km: number): string {
+  if (!Number.isFinite(km)) return '—';
+  if (km >= 1) return `${km.toFixed(2)} km`;
+  return `${Math.round(km * 1000)} m`;
+}
+
+/**
+ * Compute live miss distance (in km) from two ECEF position arrays in
+ * meters.  Returns null when either input is missing.  Pure for tests.
+ */
+export function liveMissKm(a: [number, number, number] | null, b: [number, number, number] | null): number | null {
+  if (a === null || b === null) return null;
+  const dx = a[0] - b[0];
+  const dy = a[1] - b[1];
+  const dz = a[2] - b[2];
+  return Math.sqrt(dx * dx + dy * dy + dz * dz) / 1000;
+}
