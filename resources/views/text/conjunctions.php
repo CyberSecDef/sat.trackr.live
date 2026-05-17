@@ -78,6 +78,7 @@ $rangeBadge = static function (float $km): string {
         <th>Miss</th>
         <th>Rel. speed</th>
         <th>Max prob</th>
+        <th>Replay</th>
       </tr>
     </thead>
     <tbody>
@@ -108,6 +109,11 @@ $rangeBadge = static function (float $km): string {
           <?php else: ?><span class="muted">—</span><?php endif; ?>
         </td>
         <td><?= $probBadge(isset($c['max_probability']) ? (float) $c['max_probability'] : null) ?></td>
+        <td class="mono small">
+          <a class="replay-link"
+             href="/conjunction/<?= (int) $p['norad_id'] ?>/<?= (int) $s['norad_id'] ?>"
+             title="Open 3D replay of this conjunction (requires WebGL)">▶&nbsp;Replay</a>
+        </td>
       </tr>
     <?php endforeach; ?>
     </tbody>
