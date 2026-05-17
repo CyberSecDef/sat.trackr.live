@@ -6,6 +6,7 @@ import type { SatGlobe } from './globe/Globe';
 import type { Clock } from './time/Clock';
 import { hasWebGL } from './util/webgl';
 import { getSharedObserver } from './observer/Observer';
+import { readEmbeddedReplayContext, type ReplayContext } from './replay/replayContext';
 import { parseShareParams } from './share/shareUrl';
 import './ui/DetailPanel';
 import './ui/Timeline';
@@ -19,8 +20,17 @@ export class SatApp extends LitElement {
   @property({ type: String, attribute: 'selected-norad' })
   selectedNorad: string | null = null;
 
+  /** When set to "conjunction", the SPA enters replay mode using the
+   *  JSON blob in #sat-replay-context. See docs/phase6.md. */
+  @property({ type: String, attribute: 'replay-mode' })
+  replayMode: string | null = null;
+
   /** NORAD of the currently-selected satellite, or null. */
   @state() private selected: number | null = null;
+
+  /** Phase 6 chunk 1 — populated when the route is /conjunction/p/s and the
+   *  shell embedded a valid context blob. Drives ConjunctionScene activation. */
+  @state() private replayContext: ReplayContext | null = null;
 
   /** Clock published by <sat-globe> once it's initialized. */
   @state() private clock: Clock | null = null;
@@ -65,6 +75,14 @@ export class SatApp extends LitElement {
     // Observer is set immediately; sat selection waits for the globe (which
     // mounts in updated()) and clock waits for the `clock-ready` event.
     this.applyShareParamsFromUrl();
+
+    // Phase 6 chunk 1 — conjunction replay mode. Reads the JSON blob the
+    // SpaShellController embedded; if absent or unparseable, the SPA boots
+    // in normal mode (the `<sat-app>` element keeps `replay-mode` set
+    // but `replayContext` stays null, so ConjunctionScene won't activate).
+    if (this.replayMode === 'conjunction') {
+      this.replayContext = readEmbeddedReplayContext();
+    }
   }
 
   disconnectedCallback(): void {
@@ -86,6 +104,17 @@ export class SatApp extends LitElement {
     if (this.pendingFlyToNorad !== null) {
       this.applySelection(this.pendingFlyToNorad, /* fly */ true);
       this.pendingFlyToNorad = null;
+    }
+    // Phase 6 chunk 1 — if the route was /conjunction/p/s and the shell
+    // embedded a valid context blob, enter replay mode now that the
+    // globe is initialized. Errors during scene activation are logged
+    // and the SPA stays in normal mode — better than a blank page.
+    if (this.replayContext !== null) {
+      const globe = this.globeRef.value?.globe;
+      void globe?.enterConjunctionReplay(this.replayContext).catch((err: unknown) => {
+        console.warn('[sat-app] conjunction replay activation failed', err);
+        this.replayContext = null;
+      });
     }
   };
 
