@@ -3,19 +3,23 @@
 This directory holds 3D models loaded by `MarqueeShapeLayer` when a
 marquee satellite is selected and the camera is within ~5,000 km.
 
-## Status
+## Status — Phase 5 chunk 7
 
-**Empty by default.**  Phase 4 chunk 8A shipped the swap-in
-*infrastructure* (`MarqueeSpec.gltfUri` + the loader branch in
-`MarqueeShapeLayer.show()`) but did **not** ship the model files.
-Sourcing free, correctly-licensed glTF/glb of every marquee satellite
-in one session would have been a yak-shave; better to ship the
-hooks and let real models drop in as they're found.
+**One real model wired (ISS), six still procedural.**
 
-While this directory is empty, every marquee satellite falls back to
-the Phase 3 chunk 3A procedural primitive (a colored Cesium
-`BoxGeometry` / `CylinderGeometry` per `shape` field).  That's the
-*correct* baseline, not a bug.
+Phase 5 chunk 7 added the **ISS** glTF (NASA Solar System Exploration,
+public-domain) plus the fetcher tooling.  Real model files are
+**gitignored** because committing 40+ MB binaries inflates the repo
+forever — run `make fetch-models` (or `bin/fetch-marquee-models.sh`)
+to populate `public/models/` after cloning.
+
+If the file is absent the procedural primitive renders instead — same
+correctness baseline as Phase 4 chunk 8A.  Honest framing: licensing-
+clean glTF for amateur-radio cubesats, cargo capsules, and Chinese-
+station hardware is genuinely scarce; the remaining six marquee slots
+(Tiangong, Hubble, Dragon, Cygnus, Soyuz, Starlink) stay procedural
+until contributors find sources.  See `bin/fetch-marquee-models.sh`
+for the pattern to add more.
 
 ## How to add a real model
 
@@ -62,10 +66,18 @@ behavior as `gltfUri` being unset.
 
 ## Credits
 
-*No third-party models are bundled yet.*  Add lines here as models
-get added:
+- **iss.glb** — *ISS Stationary* model, NASA Solar System Exploration
+  (Public Domain under [NASA's standard image-use guidelines](https://www.nasa.gov/multimedia/guidelines/)).
+  Source page: https://solarsystem.nasa.gov/resources/2378/international-space-station-3d-model/
+  Direct URL (used by `bin/fetch-marquee-models.sh`):
+  `https://solarsystem.nasa.gov/rails/active_storage/blobs/redirect/.../ISS_stationary.glb`
+  File size: ~44.5 MB binary glTF 2.0; assets are real-meter scale.
+  Mapped to NORAD 25544 in `MarqueeSpec` with `visualScale: 120` so the
+  on-screen rendering matches the legacy procedural primitive.
+
+Add lines below as further models get sourced:
 
 ```
-- iss.glb       — © Author Name, CC-BY 4.0, https://source.url/
-- tiangong.glb  — © Author Name, CC0 1.0,   https://source.url/
+- tiangong.glb  — © Author Name, CC-BY 4.0, https://source.url/
+- hubble.glb    — © Author Name, CC0 1.0,   https://source.url/
 ```

@@ -154,6 +154,10 @@ openapi-dump: ## Regenerate public/openapi.json from controller attributes (Phas
 sitemap-build: ## Regenerate sitemap.xml + chunked sitemap-{n}.xml from the catalog (Phase 5 chunk 5)
 	php bin/console sitemap:build
 
+.PHONY: fetch-models
+fetch-models: ## Pull marquee-satellite glTFs into public/models/ (Phase 5 chunk 7; idempotent, ~45 MB total)
+	bin/fetch-marquee-models.sh
+
 .PHONY: ingest-ovation
 ingest-ovation: ## Refresh the NOAA OVATION aurora-forecast raster (Phase 4 chunk 4)
 	php bin/console ingest:ovation
