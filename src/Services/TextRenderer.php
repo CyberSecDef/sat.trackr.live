@@ -21,6 +21,7 @@ final class TextRenderer
         string $body,
         string $activeNav = '',
         string $description = '',
+        ?string $ogImage = null,
     ): string {
         ob_start();
         require $this->rootDir . '/resources/views/text/layout.php';

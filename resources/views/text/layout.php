@@ -15,6 +15,8 @@ $title = $title ?? 'Text catalog';
 $body = $body ?? '';
 $activeNav = $activeNav ?? '';
 $description = $description ?? 'Text catalog of every tracked satellite in Earth orbit. Phase 1 fallback for browsers without WebGL.';
+// Phase 5 chunk 4 — per-page OG card, defaults to the events / top-conjunctions summary.
+$ogImage = $ogImage ?? '/og/events.png';
 ?>
 <!DOCTYPE html>
 <html lang="en" data-theme="dark">
@@ -24,6 +26,14 @@ $description = $description ?? 'Text catalog of every tracked satellite in Earth
   <meta name="theme-color" content="#0a0e27">
   <title><?= htmlspecialchars($title, ENT_QUOTES) ?> — sat.trackr.live</title>
   <meta name="description" content="<?= htmlspecialchars($description, ENT_QUOTES) ?>">
+  <meta property="og:title" content="<?= htmlspecialchars($title, ENT_QUOTES) ?> — sat.trackr.live">
+  <meta property="og:description" content="<?= htmlspecialchars($description, ENT_QUOTES) ?>">
+  <meta property="og:type" content="website">
+  <meta property="og:image" content="<?= htmlspecialchars($ogImage, ENT_QUOTES) ?>">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="630">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:image" content="<?= htmlspecialchars($ogImage, ENT_QUOTES) ?>">
   <link rel="icon" type="image/svg+xml" href="/favicon.svg">
   <!-- Phase 5 chunk 2 — installable PWA + offline cache for /text -->
   <link rel="manifest" href="/manifest.webmanifest">

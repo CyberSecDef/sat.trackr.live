@@ -19,6 +19,12 @@ $pageTitle = htmlspecialchars($appName, ENT_QUOTES) . ' — ' . $titleSuffix;
 $selectedAttr = $selectedNorad !== null
     ? ' selected-norad="' . htmlspecialchars((string) $selectedNorad, ENT_QUOTES) . '"'
     : '';
+
+// Phase 5 chunk 4 — pick the right OG card for the current route.
+$ogImagePath = $selectedNorad !== null
+    ? "/og/satellite/{$selectedNorad}.png"
+    : '/og/events.png';
+$ogImageUrl = rtrim($appUrl, '/') . $ogImagePath;
 ?>
 <!DOCTYPE html>
 <html lang="en" data-theme="dark">
@@ -32,7 +38,11 @@ $selectedAttr = $selectedNorad !== null
   <meta property="og:description" content="<?= $titleSuffix ?>">
   <meta property="og:url" content="<?= htmlspecialchars($appUrl, ENT_QUOTES) ?>">
   <meta property="og:type" content="website">
+  <meta property="og:image" content="<?= htmlspecialchars($ogImageUrl, ENT_QUOTES) ?>">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="630">
   <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:image" content="<?= htmlspecialchars($ogImageUrl, ENT_QUOTES) ?>">
   <link rel="icon" type="image/svg+xml" href="/favicon.svg">
   <!-- Phase 5 chunk 2 — installable PWA -->
   <link rel="manifest" href="/manifest.webmanifest">

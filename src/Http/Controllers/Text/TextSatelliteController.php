@@ -77,6 +77,7 @@ final class TextSatelliteController
             body: $body,
             activeNav: 'catalog',
             description: $description,
+            ogImage: "/og/satellite/{$norad}.png",
         );
         $response->getBody()->write($html);
         return $response->withHeader('Content-Type', 'text/html; charset=utf-8');

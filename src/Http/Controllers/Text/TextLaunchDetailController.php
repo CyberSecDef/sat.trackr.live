@@ -61,6 +61,7 @@ final class TextLaunchDetailController
             description: ($launch['mission_name'] ?? $launch['name']) . ' — '
                 . ($launch['provider'] ?? 'unknown provider')
                 . ' · NET ' . ($launch['net'] ?? '?'),
+            ogImage: '/og/launch/' . rawurlencode($id) . '.png',
         );
         $response->getBody()->write($html);
         return $response->withHeader('Content-Type', 'text/html; charset=utf-8');
